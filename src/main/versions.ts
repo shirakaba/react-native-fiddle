@@ -57,7 +57,8 @@ export function getLocalVersionState(ver: Version): InstallState {
   const { localPath } = ver;
   if (localPath !== undefined) {
     const dir = Installer.getExecPath(localPath);
-    if (fs.existsSync(dir)) {
+    const normalisedDir = typeof dir === 'string' ? dir : (dir as any).args[0];
+    if (fs.existsSync(normalisedDir)) {
       return InstallState.installed;
     }
   }
@@ -89,7 +90,8 @@ export async function setupVersions() {
     event.returnValue = getLatestStable();
   });
   ipcMainManager.on(IpcEvents.GET_LOCAL_VERSION_STATE, (event, ver) => {
-    event.returnValue = getLocalVersionState(ver);
+    const normalisedVer = '__uuid__devtron' in ver ? (ver as any).args[0] : ver;
+    event.returnValue = getLocalVersionState(normalisedVer);
   });
   ipcMainManager.on(IpcEvents.GET_OLDEST_SUPPORTED_MAJOR, (event) => {
     event.returnValue = getOldestSupportedMajor();

@@ -16,7 +16,9 @@ import { isSupportedFile } from '../utils/editor-utils';
  */
 export function setupFileListeners() {
   ipcMainManager.on(IpcEvents.PATH_EXISTS, (event, path: string) => {
-    event.returnValue = fs.existsSync(path);
+    const normalisedPath =
+      typeof path === 'string' ? path : (path as any).args[0];
+    event.returnValue = fs.existsSync(normalisedPath);
   });
   ipcMainManager.handle(
     IpcEvents.CLEANUP_DIRECTORY,

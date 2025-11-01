@@ -35,6 +35,8 @@ function makeLocalName(folderPath: string): string {
  * Verifies if the local electron path is valid
  */
 function isValidElectronPath(folderPath: string): boolean {
+  // '/Users/jamie/Downloads/electrons'
+  // '/Users/jamie/Downloads/electrons/Electron.app/Contents/MacOS/Electron'
   const execPath = Installer.getExecPath(folderPath);
   return fs.existsSync(execPath);
 }

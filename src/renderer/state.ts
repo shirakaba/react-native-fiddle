@@ -897,7 +897,7 @@ export class AppState {
 
     const { localPath, version } = ver;
     if (localPath && !window.ElectronFiddle.pathExists(localPath)) {
-      const err = `Local Electron build missing for version ${version} - please verify it is in the correct location or remove and re-add it.`;
+      const err = `Local Electron build missing for version ${version}, localPath '${localPath}' - please verify it is in the correct location or remove and re-add it.`;
       return { err };
     }
 
