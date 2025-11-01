@@ -25,13 +25,15 @@ export function isReleasedMajor(major: number): boolean {
 }
 
 export function getOldestSupportedMajor(): number | undefined {
-  const NUM_BRANCHES = parseInt(process.env.NUM_STABLE_BRANCHES || '');
+  // const NUM_BRANCHES = parseInt(process.env.NUM_STABLE_BRANCHES || '');
 
-  if (!Number.isNaN(NUM_BRANCHES)) {
-    return knownVersions.stableMajors.slice(-NUM_BRANCHES)[0];
-  }
+  // if (!Number.isNaN(NUM_BRANCHES)) {
+  //   return knownVersions.stableMajors.slice(-NUM_BRANCHES)[0];
+  // }
 
-  return knownVersions.supportedMajors[0];
+  // return knownVersions.supportedMajors[0];
+
+  return 0;
 }
 
 export function getLatestStable(): SemVer | undefined {
@@ -67,8 +69,36 @@ export function getLocalVersionState(ver: Version): InstallState {
 }
 
 export async function fetchVersions(): Promise<Version[]> {
-  await knownVersions.fetch();
-  return getReleasedVersions();
+  // await knownVersions.fetch();
+  // return getReleasedVersions();
+
+  const rnmPrebuildReleases = await getRnmPrebuildReleases();
+
+  return rnmPrebuildReleases
+    .filter(({ tag_name }) => tag_name.startsWith('v'))
+    .map(({ tag_name }) => ({
+      version: tag_name.replace(/^v/, ''),
+    }));
+}
+
+// Keep in sync with tools/fetch-releases.ts
+async function getRnmPrebuildReleases() {
+  const res = await fetch(
+    'https://api.github.com/repos/shirakaba/rnmprebuilds/releases',
+    {
+      headers: { 'User-Agent': 'node' },
+    },
+  );
+
+  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+  const releases = await res.json();
+
+  return (releases as Array<{ tag_name: string; published_at: string }>).map(
+    ({ tag_name, published_at }) => ({
+      tag_name,
+      published_at: new Date(published_at),
+    }),
+  );
 }
 
 export async function setupVersions() {

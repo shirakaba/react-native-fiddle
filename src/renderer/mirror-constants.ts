@@ -1,8 +1,10 @@
 const sources = {
   DEFAULT: {
-    electronMirror: 'https://github.com/electron/electron/releases/download/',
+    // href: 'https://github.com/electron/electron/releases/download/v999.0.0/electron-v999.0.0-darwin-arm64.zip',
+    electronMirror:
+      'https://github.com/shirakaba/rnmprebuilds/releases/download/',
     electronNightlyMirror:
-      'https://github.com/electron/nightlies/releases/download/',
+      'https://github.com/shirakaba/rnmprebuilds/releases/download/',
   },
   CHINA: {
     electronMirror: 'https://npmmirror.com/mirrors/electron/',
