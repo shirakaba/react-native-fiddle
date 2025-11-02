@@ -28,13 +28,13 @@ const TEST_TEMPLATE_BRANCH = 'test-template';
  * @returns Path to the folder where the fiddle is kept
  */
 async function prepareTemplate(branch: string): Promise<string> {
-  let folder = path.join(TEMPLATES_DIR, `minimal-repro-${branch}`);
+  let folder = path.join(TEMPLATES_DIR, `react-native-fiddle-repro-${branch}`);
 
   try {
     // if we don't have it, download it
     if (!fs.existsSync(folder)) {
       console.log(`Content: ${branch} downloading template`);
-      const url = `https://github.com/electron/minimal-repro/archive/${branch}.zip`;
+      const url = `https://github.com/shirakaba/react-native-fiddle-repro/archive/${branch}.zip`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`${url} ${response.status} ${response.statusText}`);
@@ -98,7 +98,7 @@ export function getTestTemplate(): Promise<EditorValues> {
  */
 export function getTemplate(version: string): Promise<EditorValues> {
   const major = Number.parseInt(version);
-  return major && isReleasedMajor(major)
+  return isReleasedMajor(major)
     ? getQuickStart(`${major}-x-y`)
     : readFiddle(STATIC_TEMPLATE_DIR);
 }
