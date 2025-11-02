@@ -1,6 +1,8 @@
+import fsPromise from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { ElectronVersions, Installer, SemVer } from '@electron/fiddle-core';
+import debug from 'debug';
 import { IpcMainInvokeEvent, app } from 'electron';
 import fs from 'fs-extra';
 
@@ -10,6 +12,60 @@ import { InstallState, Version } from '../interfaces';
 import { IpcEvents } from '../ipc-events';
 
 let knownVersions: ElectronVersions;
+
+Object.defineProperty(ElectronVersions, 'fetchVersions', {
+  ...Object.getOwnPropertyDescriptor(ElectronVersions, 'fetchVersions'),
+  value: async (cacheFile: string): Promise<unknown> => {
+    const d = debug('fiddle-core:ElectronVersions:fetchVersions:overridden');
+    const url = 'https://api.github.com/repos/shirakaba/rnmprebuilds/releases';
+    d('fetching releases list from', url);
+    const response = await fetch(url, { headers: { 'User-Agent': 'node' } });
+    if (!response.ok) {
+      throw new Error(
+        `Fetching versions failed with status code: ${response.status}`,
+      );
+    }
+    const json = await response.json();
+    await fs.promises.mkdir(path.dirname(cacheFile), {
+      recursive: true,
+    });
+
+    // Keep this mapping logic in sync with tools/fetch-releases.ts.
+    const releases = new Array<unknown>();
+    for (const { tag_name, published_at } of json as Array<{
+      tag_name: string;
+      published_at: string;
+    }>) {
+      if (!tag_name.startsWith('v')) {
+        continue;
+      }
+
+      const date = new Date(published_at);
+
+      // Remap:
+      //   https://api.github.com/repos/shirakaba/rnmprebuilds/releases
+      // ... to match the schema of:
+      //   https://releases.electronjs.org/releases.json
+      releases.push({
+        version: tag_name.replace(/^v/, ''),
+        fullDate: date.toJSON(),
+        date: `${date.getUTCFullYear()}-${(date.getUTCMonth() + 1).toString().padStart(2, '0')}-${date.getUTCDate().toString().padStart(2, '0')}`,
+        node: '22.20.0',
+        v8: '14.3.96',
+        uv: '1.51.0',
+        zlib: '1.3.1',
+        openssl: '0.0.0',
+        modules: '140',
+        chrome: '143.0.7477.0',
+        files: [],
+      });
+    }
+
+    await fsPromise.writeFile(cacheFile, JSON.stringify(releases), 'utf8');
+
+    return releases;
+  },
+});
 
 /**
  * Helper to check if this version is from a released major branch.
@@ -69,36 +125,11 @@ export function getLocalVersionState(ver: Version): InstallState {
 }
 
 export async function fetchVersions(): Promise<Version[]> {
-  // await knownVersions.fetch();
-  // return getReleasedVersions();
+  // This relies on having patched ElectronVersions.fetchVersions() to fetch
+  // from our releases mirror, which we do at the top of the file.
 
-  const rnmPrebuildReleases = await getRnmPrebuildReleases();
-
-  return rnmPrebuildReleases
-    .filter(({ tag_name }) => tag_name.startsWith('v'))
-    .map(({ tag_name }) => ({
-      version: tag_name.replace(/^v/, ''),
-    }));
-}
-
-// Keep in sync with tools/fetch-releases.ts
-async function getRnmPrebuildReleases() {
-  const res = await fetch(
-    'https://api.github.com/repos/shirakaba/rnmprebuilds/releases',
-    {
-      headers: { 'User-Agent': 'node' },
-    },
-  );
-
-  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
-  const releases = await res.json();
-
-  return (releases as Array<{ tag_name: string; published_at: string }>).map(
-    ({ tag_name, published_at }) => ({
-      tag_name,
-      published_at: new Date(published_at),
-    }),
-  );
+  await knownVersions.fetch();
+  return getReleasedVersions();
 }
 
 export async function setupVersions() {

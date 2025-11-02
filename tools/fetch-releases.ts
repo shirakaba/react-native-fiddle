@@ -14,20 +14,26 @@ export async function populateReleases() {
 
   const rnmPrebuildReleases = await getRnmPrebuildReleases();
 
+  // Keep this mapping logic in sync with src/main/versions.ts.
   const releases: Array<ReleaseInfo> = rnmPrebuildReleases
     .filter(({ tag_name }) => tag_name.startsWith('v'))
-    .map(({ tag_name, published_at }) => ({
-      version: tag_name.replace(/^v/, ''),
-      date: `${published_at.getUTCFullYear()}-${(published_at.getUTCMonth() + 1).toString().padStart(2, '0')}-${published_at.getUTCDate().toString().padStart(2, '0')}`,
-      node: '22.20.0',
-      v8: '14.3.96',
-      uv: '1.51.0',
-      zlib: '1.3.1',
-      openssl: '0.0.0',
-      modules: '140',
-      chrome: '143.0.7477.0',
-      files: [],
-    }));
+    .map(({ tag_name, published_at }) => {
+      const date = new Date(published_at);
+
+      return {
+        version: tag_name.replace(/^v/, ''),
+        fullDate: date.toJSON(),
+        date: `${date.getUTCFullYear()}-${(date.getUTCMonth() + 1).toString().padStart(2, '0')}-${date.getUTCDate().toString().padStart(2, '0')}`,
+        node: '22.20.0',
+        v8: '14.3.96',
+        uv: '1.51.0',
+        zlib: '1.3.1',
+        openssl: '0.0.0',
+        modules: '140',
+        chrome: '143.0.7477.0',
+        files: [],
+      };
+    });
 
   if (releases.length) {
     console.log(
