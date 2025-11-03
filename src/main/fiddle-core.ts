@@ -121,7 +121,12 @@ export async function setupFiddleCore(versions: ElectronVersions) {
   ipcMainManager.on(
     IpcEvents.GET_VERSION_STATE,
     (event: IpcMainEvent, version: string) => {
-      event.returnValue = installer.state(version);
+      const normalisedVersion =
+        '__uuid__devtron' in (version as unknown as { args: [string] })
+          ? (version as unknown as { args: [string] }).args[0]
+          : version;
+
+      event.returnValue = installer.state(normalisedVersion);
     },
   );
   ipcMainManager.handle(
