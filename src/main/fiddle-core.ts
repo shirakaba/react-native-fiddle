@@ -1,4 +1,4 @@
-import { ChildProcess } from 'node:child_process';
+import { ChildProcess, spawn } from 'node:child_process';
 
 import { ElectronVersions, Installer, Runner } from '@electron/fiddle-core';
 import {
@@ -21,7 +21,7 @@ let installer: Installer;
 let runner: Runner;
 
 // Keep track of which fiddle process belongs to which WebContents
-const fiddleProcesses = new WeakMap<WebContents, ChildProcess>();
+const fiddleProcesses = new WeakMap<WebContents, Set<ChildProcess>>();
 
 const downloadingVersions = new Map<string, Promise<any>>();
 const removingVersions = new Map<string, Promise<void>>();
@@ -55,12 +55,24 @@ export async function startFiddle(
 
   Object.assign(env, params.env);
 
-  const child = await runner.spawn(
+  const hostApp = await runner.spawn(
     isValidBuild && localPath ? Installer.getExecPath(localPath) : version,
     dir,
     { args: options, cwd: dir, env },
   );
-  fiddleProcesses.set(webContents, child);
+
+  const RNCLI = spawn('node', ['--run', 'start'], {
+    cwd: '/Users/jamie/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y',
+    stdio: 'pipe',
+  });
+
+  let childProcesses = fiddleProcesses.get(webContents);
+  if (!childProcesses) {
+    childProcesses = new Set<ChildProcess>();
+    fiddleProcesses.set(webContents, childProcesses);
+  }
+  childProcesses.add(hostApp);
+  childProcesses.add(RNCLI);
 
   const pushOutput = (data: string | Buffer) => {
     ipcMainManager.send(
@@ -70,12 +82,32 @@ export async function startFiddle(
     );
   };
 
-  child.stdout?.on('data', pushOutput);
-  child.stderr?.on('data', pushOutput);
+  hostApp.stdout?.on('data', pushOutput);
+  hostApp.stderr?.on('data', pushOutput);
 
-  child.on('close', async (code, signal) => {
+  RNCLI.stdout?.on('data', pushOutput);
+  RNCLI.stderr?.on('data', pushOutput);
+  RNCLI.on('error', (error) => {
+    console.error('[RNCLI] error', error);
+  });
+
+  hostApp.on('close', async (code, signal) => {
+    childProcesses.delete(hostApp);
+    if (childProcesses.size) {
+      return;
+    }
+
     fiddleProcesses.delete(webContents);
+    ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
+  });
 
+  RNCLI.on('close', (code, signal) => {
+    childProcesses.delete(RNCLI);
+    if (childProcesses.size) {
+      return;
+    }
+
+    fiddleProcesses.delete(webContents);
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
 }
@@ -84,17 +116,22 @@ export async function startFiddle(
  * Stop a currently running Electron fiddle.
  */
 export function stopFiddle(webContents: WebContents): void {
-  const child = fiddleProcesses.get(webContents);
-  child?.kill();
+  const childProcesses = fiddleProcesses.get(webContents);
+  if (!childProcesses) {
+    return;
+  }
+  for (const child of childProcesses) {
+    child?.kill();
 
-  if (child) {
-    // If the child process is still alive 1 second after we've
-    // attempted to kill it by normal means, kill it forcefully.
-    setTimeout(() => {
-      if (child.exitCode === null) {
-        child.kill('SIGKILL');
-      }
-    }, 1000);
+    if (child) {
+      // If the child process is still alive 1 second after we've
+      // attempted to kill it by normal means, kill it forcefully.
+      setTimeout(() => {
+        if (child.exitCode === null) {
+          child.kill('SIGKILL');
+        }
+      }, 1000);
+    }
   }
 }
 
