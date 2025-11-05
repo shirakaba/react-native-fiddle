@@ -152,9 +152,9 @@ export type EditorValues = Record<EditorId, string>;
 
 // main.{cjs,js,mjs} gets special treatment: it is required as the entry point
 // when we run fiddles or create a package.json to package fiddles.
-export const MAIN_CJS = 'main.cjs';
-export const MAIN_JS = 'main.js';
-export const MAIN_MJS = 'main.mjs';
+export const MAIN_CJS = 'index.cjs';
+export const MAIN_JS = 'index.js';
+export const MAIN_MJS = 'index.mjs';
 
 export const PACKAGE_NAME = 'package.json';
 
