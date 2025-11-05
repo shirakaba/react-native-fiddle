@@ -101,7 +101,13 @@ export async function startFiddle(
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
 
-  RNCLI.on('close', (code, signal) => {
+  // The RNCLI seems to fail to flush the stdio stream upon child.kill(), so we
+  // get an 'exit' event but never a 'close' event.
+  //
+  // What's worse, port 8081 still seems to be in use even after the SIGKILL,
+  // which we will have to look into next time as otherwise the cleanup will be
+  // unfinished and cause the second launch to fail.
+  RNCLI.on('exit', (code, signal) => {
     childProcesses.delete(RNCLI);
     if (childProcesses.size) {
       return;
@@ -120,18 +126,17 @@ export function stopFiddle(webContents: WebContents): void {
   if (!childProcesses) {
     return;
   }
-  for (const child of childProcesses) {
-    child?.kill();
 
-    if (child) {
-      // If the child process is still alive 1 second after we've
-      // attempted to kill it by normal means, kill it forcefully.
-      setTimeout(() => {
-        if (child.exitCode === null) {
-          child.kill('SIGKILL');
-        }
-      }, 1000);
-    }
+  for (const child of childProcesses) {
+    child.kill();
+
+    // If the child process is still alive 1 second after we've
+    // attempted to kill it by normal means, kill it forcefully.
+    setTimeout(() => {
+      if (child.exitCode === null) {
+        child.kill('SIGKILL');
+      }
+    }, 1000);
   }
 }
 
