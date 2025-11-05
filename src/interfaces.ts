@@ -143,6 +143,9 @@ export const enum GenericDialogType {
 export type EditorId = `${string}.${
   | 'cjs'
   | 'js'
+  | 'jsx'
+  | 'ts'
+  | 'tsx'
   | 'mjs'
   | 'html'
   | 'css'
