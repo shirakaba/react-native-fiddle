@@ -12,6 +12,7 @@ import { EditorMosaic } from './editor-mosaic';
 import { ELECTRON_MIRROR } from './mirror-constants';
 import { normalizeVersion } from './utils/normalize-version';
 import { sortVersions } from './utils/sort-versions';
+import stripAnsi from './utils/strip-ansi';
 import {
   addLocalVersion,
   fetchVersions,
@@ -1048,7 +1049,7 @@ export class AppState {
     data: string | Buffer,
     options: OutputOptions = { isNotPre: false, bypassBuffer: true },
   ) {
-    let strData = data.toString();
+    let strData = stripAnsi(data.toString());
     const { isNotPre, bypassBuffer } = options;
 
     if (window.ElectronFiddle.platform === 'win32' && bypassBuffer === false) {
