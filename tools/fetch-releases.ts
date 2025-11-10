@@ -12,7 +12,26 @@ export async function populateReleases() {
   //   elves.getReleaseInfo(version),
   // );
 
-  const rnmPrebuildReleases = await getRnmPrebuildReleases();
+  let rnmPrebuildReleases: Array<{
+    tag_name: string;
+    published_at: Date;
+  }>;
+  try {
+    rnmPrebuildReleases = await getRnmPrebuildReleases();
+  } catch (error) {
+    // 403 likely indicates a rate limit error. I'm adding this fallback to
+    // allow me to keep on developing despite having hit the rate limit.
+    if (error instanceof Error && error.message === 'GitHub API error: 403') {
+      console.error(
+        'Got response with HTTP Status 403 when calling getRnmPrebuildReleases(). Falling back to hard-coded v0.79.0 release.',
+      );
+      rnmPrebuildReleases = [
+        { tag_name: 'v0.79.0', published_at: new Date('2025-11-01T17:58:52Z') },
+      ];
+    } else {
+      throw error;
+    }
+  }
 
   // Keep this mapping logic in sync with src/main/versions.ts.
   const releases: Array<ReleaseInfo> = rnmPrebuildReleases
