@@ -10,6 +10,7 @@ import {
 
 import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
 import { ipcMainManager } from './ipc';
+import { treeKill } from './tree-kill';
 import {
   DownloadVersionParams,
   ProgressObject,
@@ -101,13 +102,7 @@ export async function startFiddle(
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
 
-  // The RNCLI seems to fail to flush the stdio stream upon child.kill(), so we
-  // get an 'exit' event but never a 'close' event.
-  //
-  // What's worse, port 8081 still seems to be in use even after the SIGKILL,
-  // which we will have to look into next time as otherwise the cleanup will be
-  // unfinished and cause the second launch to fail.
-  RNCLI.on('exit', (code, signal) => {
+  RNCLI.on('close', (code, signal) => {
     childProcesses.delete(RNCLI);
     if (childProcesses.size) {
       return;
@@ -128,13 +123,23 @@ export function stopFiddle(webContents: WebContents): void {
   }
 
   for (const child of childProcesses) {
-    child.kill();
+    if (!child.pid) {
+      continue;
+    }
+
+    // Although child.kill() is sufficient for killing the hostApp child
+    // process, to kill RNCLI, it is necessary to kill its grandchild processes
+    // (i.e. the Metro bundler) too, hence we have to bring in treeKill().
+    treeKill(child.pid, 'SIGTERM');
 
     // If the child process is still alive 1 second after we've
     // attempted to kill it by normal means, kill it forcefully.
     setTimeout(() => {
       if (child.exitCode === null) {
-        child.kill('SIGKILL');
+        if (!child.pid) {
+          return;
+        }
+        treeKill(child.pid, 'SIGKILL');
       }
     }, 1000);
   }
