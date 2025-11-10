@@ -65,6 +65,9 @@ export async function getRnmPrebuildReleases() {
     },
   );
 
+  // If this ever gives a 403, it's likely because we hit a rate limit.
+  // Authenticated requests get a higher rate limit:
+  // https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting
   if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
   const releases = await res.json();
 
