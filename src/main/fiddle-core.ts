@@ -1,5 +1,6 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import EventEmitter from 'node:events';
+import fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { ElectronVersions, Installer, Runner } from '@electron/fiddle-core';
@@ -94,19 +95,26 @@ export async function startFiddle(
   hostApp.on('close', async (code, signal) => {
     childProcesses.hostApp = null;
     if (childProcesses.RNCLI) {
+      console.log(`[CLOSE] hostApp (but waiting on RNCLI ⏳)`);
       return;
     }
+
+    console.log(`[CLOSE] hostApp (RNCLI already closed) 👍`);
 
     fiddleProcesses.delete(webContents);
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
+
+  const templateCwd =
+    '/Users/jamie/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y';
 
   restartRNCLI({
     prev: undefined,
     childProcesses,
     webContents,
     pushOutput,
-    cwd: '/Users/jamie/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y',
+    templateCwd,
+    cwd: templateCwd,
   });
 }
 
@@ -116,12 +124,14 @@ function restartRNCLI({
   webContents,
   pushOutput,
   cwd,
+  templateCwd,
 }: {
   prev?: ChildProcess;
   childProcesses: FiddleProcessesValue;
   webContents: WebContents;
   pushOutput: (data: string | Buffer) => void;
   cwd: string;
+  templateCwd: string;
 }) {
   if (prev) {
     // Clean up previous RNCLI instance
@@ -155,8 +165,11 @@ function restartRNCLI({
   function onClose(code: number | null, signal: NodeJS.Signals | null) {
     childProcesses.RNCLI = null;
     if (childProcesses.hostApp) {
+      console.log(`[CLOSE] RNCLI (but waiting on hostApp ⏳)`);
       return;
     }
+
+    console.log(`[CLOSE] RNCLI (hostApp already closed) 👍`);
 
     fiddleProcesses.delete(webContents);
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
@@ -242,12 +255,33 @@ function restartRNCLI({
       );
     }
 
+    /**
+     * We have a node_modules folder in our original template, but manually
+     * saved templates omit it for some reason, so we'll symlink back to it.
+     */
+    const nodeModulesTarget = path.resolve(templateCwd, 'node_modules');
+    const symlinkPath = path.resolve(dirname, 'node_modules');
+    try {
+      await fsPromises.symlink(nodeModulesTarget, symlinkPath, 'dir');
+    } catch (cause) {
+      if (
+        !(cause instanceof Error) ||
+        !('code' in cause) ||
+        cause.code !== 'EEXIST'
+      ) {
+        throw new Error('Unable to symlink node_modules into save location', {
+          cause,
+        });
+      }
+    }
+
     restartRNCLI({
       prev: next,
       childProcesses,
       webContents,
       pushOutput,
       cwd: dirname,
+      templateCwd,
     });
   }
 }
