@@ -1,5 +1,4 @@
 import { ChildProcess, spawn } from 'node:child_process';
-import EventEmitter from 'node:events';
 import fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 
@@ -13,6 +12,7 @@ import {
 } from 'electron';
 
 import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
+import { eventEmitter, getCurrentTemplateDir } from './fiddle-core-inputs';
 import { ipcMainManager } from './ipc';
 import { treeKill } from './tree-kill';
 import {
@@ -24,13 +24,13 @@ import { IpcEvents } from '../ipc-events';
 
 let installer: Installer;
 let runner: Runner;
-export const eventEmitter = new EventEmitter();
 
 // Keep track of which fiddle process belongs to which WebContents
 const fiddleProcesses = new WeakMap<WebContents, FiddleProcessesValue>();
 type FiddleProcessesValue = {
   hostApp: { childProcess: ChildProcess } | null;
   RNCLI: {
+    relaunchInProgress: boolean;
     childProcess: ChildProcess;
     cwd: string;
     onSavedLocalFiddle: (dirname: string) => void;
@@ -78,6 +78,7 @@ export async function startFiddle(
   let childProcesses = fiddleProcesses.get(webContents);
   if (!childProcesses) {
     childProcesses = { hostApp: null, RNCLI: null };
+    fiddleProcesses.set(webContents, childProcesses);
   }
   childProcesses.hostApp = { childProcess: hostApp };
 
@@ -105,8 +106,10 @@ export async function startFiddle(
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
 
-  const templateCwd =
-    '/Users/jamie/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y';
+  // This is a bit fragile, but I'm not clear that there is any first-class way
+  // to get the template directory otherwise.
+  const templateCwd = getCurrentTemplateDir();
+  console.log(`[fiddle-core] got templateCwd: "${templateCwd}"`);
 
   restartRNCLI({
     prev: undefined,
@@ -135,10 +138,10 @@ function restartRNCLI({
 }) {
   if (prev) {
     // Clean up previous RNCLI instance
-    prev.stdout?.on('data', pushOutput);
-    prev.stderr?.on('data', pushOutput);
-    prev.on('error', onError);
-    prev.on('close', onClose);
+    prev.stdout?.off('data', pushOutput);
+    prev.stderr?.off('data', pushOutput);
+    prev.off('error', onError);
+    prev.off('close', onClose);
     eventEmitter.removeListener(
       IpcEvents.SAVED_LOCAL_FIDDLE,
       onSavedLocalFiddle,
@@ -152,6 +155,7 @@ function restartRNCLI({
   eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
 
   childProcesses.RNCLI = {
+    relaunchInProgress: false,
     childProcess: next,
     cwd,
     onSavedLocalFiddle,
@@ -163,6 +167,11 @@ function restartRNCLI({
   next.on('close', onClose);
 
   function onClose(code: number | null, signal: NodeJS.Signals | null) {
+    if (childProcesses.RNCLI?.relaunchInProgress) {
+      console.log(`[CLOSE] RNCLI (closing due to relaunch) ♻️`);
+      return;
+    }
+
     childProcesses.RNCLI = null;
     if (childProcesses.hostApp) {
       console.log(`[CLOSE] RNCLI (but waiting on hostApp ⏳)`);
@@ -208,6 +217,8 @@ function restartRNCLI({
     }
     if (pid) {
       const retry = async (): Promise<'Cancel' | 'Continue'> => {
+        RNCLI.relaunchInProgress = true;
+
         try {
           await new Promise<void>((resolve, reject) => {
             treeKill(pid, 'SIGTERM', (error?: Error) => {
@@ -231,6 +242,8 @@ function restartRNCLI({
 
           const choice = buttons[response] ?? 'Cancel';
           return choice === 'Retry' ? await retry() : choice;
+        } finally {
+          RNCLI.relaunchInProgress = false;
         }
       };
 
@@ -292,16 +305,36 @@ function restartRNCLI({
 export function stopFiddle(webContents: WebContents): void {
   const childProcesses = fiddleProcesses.get(webContents);
   if (!childProcesses) {
+    console.log(`[stopFiddle] bailing because no childProcesses`);
     return;
   }
 
-  for (const child of [
+  const childProcessesThemselves = [
     childProcesses.RNCLI?.childProcess,
     childProcesses.hostApp?.childProcess,
-  ].filter((childProcess) => !!childProcess)) {
+  ].filter((childProcess) => !!childProcess);
+
+  console.log(
+    `[stopFiddle] childProcessesThemselves`,
+    childProcessesThemselves.map(({ pid, spawnargs, killed, connected }) => ({
+      pid,
+      spawnargs,
+      killed,
+      connected,
+    })),
+  );
+
+  for (const [index, child] of Object.entries(childProcessesThemselves)) {
     if (typeof child.pid !== 'number') {
+      console.log(
+        `[stopFiddle] childProcessesThemselves[${index}] skipping due to no pid`,
+      );
       continue;
     }
+
+    console.log(
+      `[stopFiddle] childProcessesThemselves[${index}] killing with SIGTERM...`,
+    );
 
     // Although child.kill() is sufficient for killing the hostApp child
     // process, to kill RNCLI, it is necessary to kill its grandchild processes
@@ -313,19 +346,29 @@ export function stopFiddle(webContents: WebContents): void {
     setTimeout(() => {
       if (child.exitCode === null) {
         if (typeof child.pid !== 'number') {
+          console.log(
+            `[stopFiddle] childProcessesThemselves[${index}] tree kill wasn't enough, so want to SIGKILL, but can't as we don't even have a pid`,
+          );
           return;
         }
+
+        console.log(
+          `[stopFiddle] childProcessesThemselves[${index}] tree kill wasn't enough, so will SIGKILL`,
+        );
         treeKill(child.pid, 'SIGKILL');
       }
     }, 1000);
   }
 
   if (childProcesses.RNCLI?.onSavedLocalFiddle) {
+    console.log(`[stopFiddle] removing onSavedLocalFiddle() listener`);
     eventEmitter.removeListener(
       IpcEvents.SAVED_LOCAL_FIDDLE,
       childProcesses.RNCLI.onSavedLocalFiddle,
     );
   }
+
+  console.log(`[stopFiddle] all done!`);
 }
 
 export async function setupFiddleCore(versions: ElectronVersions) {

@@ -4,6 +4,7 @@ import { IpcMainInvokeEvent, app } from 'electron';
 import fs from 'fs-extra';
 
 import { STATIC_DIR } from './constants';
+import { eventEmitter } from './fiddle-core-inputs';
 import { ipcMainManager } from './ipc';
 import { readFiddle } from './utils/read-fiddle';
 import { isReleasedMajor } from './versions';
@@ -78,7 +79,10 @@ function getQuickStart(branch: string): Promise<EditorValues> {
   let pending = templateCache[branch];
   if (!pending) {
     console.log(`Content: ${branch} template loading`);
-    pending = prepareTemplate(branch).then(readFiddle);
+    pending = prepareTemplate(branch).then((folder) => {
+      eventEmitter.emit('add-template', branch, folder);
+      return readFiddle(folder);
+    });
     templateCache[branch] = pending;
   }
   return pending;
@@ -106,7 +110,14 @@ export function getTemplate(version: string): Promise<EditorValues> {
 export async function setupContent() {
   ipcMainManager.handle(
     IpcEvents.GET_TEMPLATE,
-    (_: IpcMainInvokeEvent, version: string) => getTemplate(version),
+    async (_: IpcMainInvokeEvent, version: string) => {
+      const major = Number.parseInt(version);
+      const branch = `${major}-x-y`;
+
+      const editorValues = await getTemplate(version);
+      eventEmitter.emit('set-current-template', branch);
+      return editorValues;
+    },
   );
   ipcMainManager.handle(IpcEvents.GET_TEST_TEMPLATE, (_: IpcMainInvokeEvent) =>
     getTestTemplate(),

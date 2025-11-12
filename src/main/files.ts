@@ -4,7 +4,7 @@ import { BrowserWindow, IpcMainInvokeEvent, app, dialog } from 'electron';
 import fs from 'fs-extra';
 import * as tmp from 'tmp';
 
-import { eventEmitter } from './fiddle-core';
+import { eventEmitter } from './fiddle-core-inputs';
 import { ipcMainManager } from './ipc';
 import { getFiles } from './utils/get-files';
 import { readFiddle } from './utils/read-fiddle';
