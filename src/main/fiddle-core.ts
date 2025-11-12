@@ -1,4 +1,6 @@
 import { ChildProcess, spawn } from 'node:child_process';
+import EventEmitter from 'node:events';
+import * as path from 'node:path';
 
 import { ElectronVersions, Installer, Runner } from '@electron/fiddle-core';
 import {
@@ -6,6 +8,7 @@ import {
   IpcMainEvent,
   IpcMainInvokeEvent,
   WebContents,
+  dialog,
 } from 'electron';
 
 import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
@@ -20,9 +23,18 @@ import { IpcEvents } from '../ipc-events';
 
 let installer: Installer;
 let runner: Runner;
+export const eventEmitter = new EventEmitter();
 
 // Keep track of which fiddle process belongs to which WebContents
-const fiddleProcesses = new WeakMap<WebContents, Set<ChildProcess>>();
+const fiddleProcesses = new WeakMap<WebContents, FiddleProcessesValue>();
+type FiddleProcessesValue = {
+  hostApp: { childProcess: ChildProcess } | null;
+  RNCLI: {
+    childProcess: ChildProcess;
+    cwd: string;
+    onSavedLocalFiddle: (dirname: string) => void;
+  } | null;
+};
 
 const downloadingVersions = new Map<string, Promise<any>>();
 const removingVersions = new Map<string, Promise<void>>();
@@ -62,18 +74,11 @@ export async function startFiddle(
     { args: options, cwd: dir, env },
   );
 
-  const RNCLI = spawn('node', ['--run', 'start'], {
-    cwd: '/Users/jamie/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y',
-    stdio: 'pipe',
-  });
-
   let childProcesses = fiddleProcesses.get(webContents);
   if (!childProcesses) {
-    childProcesses = new Set<ChildProcess>();
-    fiddleProcesses.set(webContents, childProcesses);
+    childProcesses = { hostApp: null, RNCLI: null };
   }
-  childProcesses.add(hostApp);
-  childProcesses.add(RNCLI);
+  childProcesses.hostApp = { childProcess: hostApp };
 
   const pushOutput = (data: string | Buffer) => {
     ipcMainManager.send(
@@ -86,15 +91,9 @@ export async function startFiddle(
   hostApp.stdout?.on('data', pushOutput);
   hostApp.stderr?.on('data', pushOutput);
 
-  RNCLI.stdout?.on('data', pushOutput);
-  RNCLI.stderr?.on('data', pushOutput);
-  RNCLI.on('error', (error) => {
-    console.error('[RNCLI] error', error);
-  });
-
   hostApp.on('close', async (code, signal) => {
-    childProcesses.delete(hostApp);
-    if (childProcesses.size) {
+    childProcesses.hostApp = null;
+    if (childProcesses.RNCLI) {
       return;
     }
 
@@ -102,15 +101,155 @@ export async function startFiddle(
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
 
-  RNCLI.on('close', (code, signal) => {
-    childProcesses.delete(RNCLI);
-    if (childProcesses.size) {
+  restartRNCLI({
+    prev: undefined,
+    childProcesses,
+    webContents,
+    pushOutput,
+    cwd: '/Users/jamie/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y',
+  });
+}
+
+function restartRNCLI({
+  prev,
+  childProcesses,
+  webContents,
+  pushOutput,
+  cwd,
+}: {
+  prev?: ChildProcess;
+  childProcesses: FiddleProcessesValue;
+  webContents: WebContents;
+  pushOutput: (data: string | Buffer) => void;
+  cwd: string;
+}) {
+  if (prev) {
+    // Clean up previous RNCLI instance
+    prev.stdout?.on('data', pushOutput);
+    prev.stderr?.on('data', pushOutput);
+    prev.on('error', onError);
+    prev.on('close', onClose);
+    eventEmitter.removeListener(
+      IpcEvents.SAVED_LOCAL_FIDDLE,
+      onSavedLocalFiddle,
+    );
+  }
+
+  const next = spawn('node', ['--run', 'start'], {
+    cwd,
+    stdio: 'pipe',
+  });
+  eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
+
+  childProcesses.RNCLI = {
+    childProcess: next,
+    cwd,
+    onSavedLocalFiddle,
+  };
+
+  next.stdout?.on('data', pushOutput);
+  next.stderr?.on('data', pushOutput);
+  next.on('error', onError);
+  next.on('close', onClose);
+
+  function onClose(code: number | null, signal: NodeJS.Signals | null) {
+    childProcesses.RNCLI = null;
+    if (childProcesses.hostApp) {
       return;
     }
 
     fiddleProcesses.delete(webContents);
     ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
-  });
+  }
+
+  function onError(error: Error) {
+    console.error('[RNCLI] error', error);
+  }
+
+  async function onSavedLocalFiddle(dirname: string) {
+    console.log('[IpcEvents.SAVED_LOCAL_FIDDLE] dirname:', dirname);
+    const RNCLI = childProcesses.RNCLI;
+    if (!RNCLI) {
+      return;
+    }
+
+    const rnCliCwd = RNCLI.cwd;
+    if (!rnCliCwd) {
+      return;
+    }
+
+    if (path.resolve(dirname) === path.resolve(rnCliCwd)) {
+      console.log(
+        `[IpcEvents.SAVED_LOCAL_FIDDLE] dirname "${dirname}" unchanged, so keeping Metro CLI as-is.`,
+      );
+      return;
+    }
+
+    console.log(
+      `[IpcEvents.SAVED_LOCAL_FIDDLE] dirname "${dirname}" changed, so relaunching Metro CLI in new CWD...`,
+    );
+
+    const { pid } = RNCLI.childProcess;
+    if (!pid) {
+      return;
+    }
+    if (pid) {
+      const retry = async (): Promise<'Cancel' | 'Continue'> => {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            treeKill(pid, 'SIGTERM', (error?: Error) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve();
+              }
+            });
+          });
+          return 'Continue';
+        } catch (error) {
+          const buttons = ['Retry', 'Cancel'] as const;
+          const { response } = await dialog.showMessageBox({
+            type: 'error',
+            message:
+              "Unable to terminate React Native CLI process. Click 'Retry' to try terminating it again, or 'Cancel' in case you have any unsaved work to save before quitting manually.",
+            detail: error instanceof Error ? error.message : undefined,
+            buttons: buttons as unknown as string[],
+          });
+
+          const choice = buttons[response] ?? 'Cancel';
+          return choice === 'Retry' ? await retry() : choice;
+        }
+      };
+
+      const result = await retry();
+      switch (result) {
+        case 'Cancel': {
+          console.log(
+            `[IpcEvents.SAVED_LOCAL_FIDDLE] Unable to terminate React Native CLI process, so cancelling relaunch.`,
+          );
+          return;
+        }
+        case 'Continue': {
+          console.log(
+            `[IpcEvents.SAVED_LOCAL_FIDDLE] relaunching Metro CLI in new CWD: "${dirname}"`,
+          );
+          break;
+        }
+      }
+    } else {
+      console.log(
+        `[IpcEvents.SAVED_LOCAL_FIDDLE] previous childProcess lacked pid, so no process termination needed. Relaunching Metro CLI in new CWD: "${dirname}"`,
+      );
+    }
+
+    restartRNCLI({
+      prev: next,
+      childProcesses,
+      webContents,
+      pushOutput,
+      cwd: dirname,
+    });
+  }
 }
 
 /**
@@ -122,8 +261,11 @@ export function stopFiddle(webContents: WebContents): void {
     return;
   }
 
-  for (const child of childProcesses) {
-    if (!child.pid) {
+  for (const child of [
+    childProcesses.RNCLI?.childProcess,
+    childProcesses.hostApp?.childProcess,
+  ].filter((childProcess) => !!childProcess)) {
+    if (typeof child.pid !== 'number') {
       continue;
     }
 
@@ -136,12 +278,19 @@ export function stopFiddle(webContents: WebContents): void {
     // attempted to kill it by normal means, kill it forcefully.
     setTimeout(() => {
       if (child.exitCode === null) {
-        if (!child.pid) {
+        if (typeof child.pid !== 'number') {
           return;
         }
         treeKill(child.pid, 'SIGKILL');
       }
     }, 1000);
+  }
+
+  if (childProcesses.RNCLI?.onSavedLocalFiddle) {
+    eventEmitter.removeListener(
+      IpcEvents.SAVED_LOCAL_FIDDLE,
+      childProcesses.RNCLI.onSavedLocalFiddle,
+    );
   }
 }
 
