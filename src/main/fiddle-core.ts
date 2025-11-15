@@ -150,17 +150,19 @@ function restartRNCLI({
     prev.stderr?.off('data', pushOutput);
     prev.off('error', onError);
     prev.off('close', onClose);
-    eventEmitter.removeListener(
-      IpcEvents.SAVED_LOCAL_FIDDLE,
-      onSavedLocalFiddle,
-    );
   }
 
   const next = spawn('node', ['--run', 'start'], {
     cwd,
     stdio: 'pipe',
   });
-  eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
+  // Just attach this listener on spawning the initial instance; no need to
+  // reattach it each time we spawn a new one, because it is not
+  // instance-specific (and more to the point, I found that even if you do
+  // diligently run removeListener(), it wouldn't actually remove it, somehow).
+  if (!prev) {
+    eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
+  }
 
   childProcesses.RNCLI = {
     relaunchInProgress: false,
