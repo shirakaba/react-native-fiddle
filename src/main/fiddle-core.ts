@@ -471,6 +471,12 @@ export function stopFiddle(webContents: WebContents): void {
           `[stopFiddle] childProcessesThemselves[${index}] tree kill wasn't enough, so will SIGKILL`,
         );
         treeKill(child.pid, 'SIGKILL');
+
+        // FIXME: It seems that even when we reach this point, the Metro server
+        // remains alive. Very tempted at this point to do a `lsof -i :8081` and
+        // kill whatever zombie is on that pid (probably from command `node`
+        // rather than `Electron`). I wonder if the whole root of the problem is
+        // that RNCLI forks the dev server process?
       }
     }, 1000);
   }
