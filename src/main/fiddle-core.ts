@@ -40,7 +40,6 @@ type FiddleProcessesValue = {
     relaunchInProgress: boolean;
     childProcess: ChildProcess;
     cwd: string;
-    onSavedLocalFiddle: (dirname: string) => void;
     removeReadyListener?: () => void;
   } | null;
 };
@@ -156,19 +155,14 @@ function restartRNCLI({
     cwd,
     stdio: 'pipe',
   });
-  // Just attach this listener on spawning the initial instance; no need to
-  // reattach it each time we spawn a new one, because it is not
-  // instance-specific (and more to the point, I found that even if you do
-  // diligently run removeListener(), it wouldn't actually remove it, somehow).
-  if (!prev) {
-    eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
-  }
+
+  eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
+  eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
 
   childProcesses.RNCLI = {
     relaunchInProgress: false,
     childProcess: next,
     cwd,
-    onSavedLocalFiddle,
   };
 
   if (next.stdout) {
@@ -481,13 +475,7 @@ export function stopFiddle(webContents: WebContents): void {
     }, 1000);
   }
 
-  if (childProcesses.RNCLI?.onSavedLocalFiddle) {
-    console.log(`[stopFiddle] removing onSavedLocalFiddle() listener`);
-    eventEmitter.removeListener(
-      IpcEvents.SAVED_LOCAL_FIDDLE,
-      childProcesses.RNCLI.onSavedLocalFiddle,
-    );
-  }
+  eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
 
   console.log(`[stopFiddle] all done!`);
 }
