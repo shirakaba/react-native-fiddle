@@ -1,6 +1,10 @@
-import { ChildProcess, spawn } from 'node:child_process';
+import { ChildProcess, exec, spawn } from 'node:child_process';
 import fsPromises from 'node:fs/promises';
+import { homedir } from 'node:os';
 import * as path from 'node:path';
+import { platform } from 'node:process';
+import * as readline from 'node:readline';
+import { promisify } from 'node:util';
 
 import { ElectronVersions, Installer, Runner } from '@electron/fiddle-core';
 import {
@@ -22,6 +26,8 @@ import {
 } from '../interfaces';
 import { IpcEvents } from '../ipc-events';
 
+const execPromise = promisify(exec);
+
 let installer: Installer;
 let runner: Runner;
 
@@ -34,6 +40,7 @@ type FiddleProcessesValue = {
     childProcess: ChildProcess;
     cwd: string;
     onSavedLocalFiddle: (dirname: string) => void;
+    removeReadyListener?: () => void;
   } | null;
 };
 
@@ -138,7 +145,7 @@ function restartRNCLI({
 }) {
   if (prev) {
     // Clean up previous RNCLI instance
-    prev.stdout?.off('data', pushOutput);
+    childProcesses.RNCLI?.removeReadyListener?.();
     prev.stderr?.off('data', pushOutput);
     prev.off('error', onError);
     prev.off('close', onClose);
@@ -161,7 +168,118 @@ function restartRNCLI({
     onSavedLocalFiddle,
   };
 
-  next.stdout?.on('data', pushOutput);
+  if (next.stdout) {
+    const rl = readline.createInterface({ input: next.stdout });
+
+    let reconnectState:
+      | { type: 'not reconnected' }
+      | { type: 'reconnecting'; revert: () => void }
+      | { type: 'reconnected'; value: ChildProcess } = {
+      type: 'not reconnected',
+    };
+
+    const onLine = async (line: string) => {
+      pushOutput(line);
+
+      // Trigger automatic reconnection to the new RNCLI instance.
+
+      if (!prev) {
+        // This is the 'first' RNCLI instance, rather than a 'new' once, so no
+        // need to reconnect; it'll connect by itself.
+        return;
+      }
+
+      const { hostApp } = childProcesses;
+      if (!hostApp) {
+        // No host app, no point in triggering a reconnect.
+        return;
+      }
+
+      if (
+        reconnectState.type === 'reconnected' &&
+        reconnectState.value === next
+      ) {
+        // Suppressing auto-reconnect, as already reconnected.
+        return;
+      }
+
+      if (reconnectState.type === 'reconnecting') {
+        // Suppressing auto-reconnect, as an attempt is already in-flight.
+        return;
+      }
+
+      const lastreconnectState = reconnectState;
+      reconnectState = {
+        type: 'reconnecting',
+        revert: () => {
+          reconnectState = lastreconnectState;
+        },
+      };
+
+      if (!line.includes('Dev server ready.')) {
+        // RNCLI hasn't started running the Metro dev server yet.
+        reconnectState.revert();
+        return;
+      }
+
+      if (platform !== 'darwin') {
+        console.warn(
+          'Automatic reconnecting to RNCLI only implemented on macOS. Please perform `Right-click > Reload` on the host app to reconnect.',
+        );
+        reconnectState.revert();
+        return;
+      }
+
+      const { spawnfile } = hostApp.childProcess;
+      const infoPlist = path.resolve(spawnfile, '../../Info.plist');
+      let bundleId: string;
+      try {
+        const { stdout } = await execPromise(
+          `defaults read "${infoPlist}" CFBundleIdentifier`,
+        );
+        bundleId = stdout.trim();
+      } catch (error) {
+        console.error(
+          'Unable to trigger a reload, as unable to determine the CFBundleIdentifier of the hostApp',
+          error,
+        );
+        reconnectState.revert();
+        return;
+      }
+
+      const triggerReloadFile = path.resolve(
+        homedir(),
+        `Library/Application Support/${bundleId}/trigger-reload.txt`,
+      );
+
+      console.log('Triggering reconnect to the new RNCLI instance...');
+      try {
+        // Writing any change will do.
+        await fsPromises.writeFile(triggerReloadFile, new Date().toJSON());
+      } catch (error) {
+        console.error(
+          'Failed to trigger a reconnect to the new RNCLI instance. Please perform `Right-click > Reload` on the host app to reconnect.',
+          error,
+        );
+        reconnectState.revert();
+        return;
+      }
+      console.log('... Triggered reconnect to the new RNCLI instance!');
+
+      // We can't examine what happens from here, so just have to assume that
+      // the trigger led to a successful reload (or in any case, that any
+      // further attempts would be futile).
+      reconnectState = { type: 'reconnected', value: next };
+    };
+
+    rl.on('line', onLine);
+
+    const { RNCLI } = childProcesses;
+    RNCLI.removeReadyListener = () => {
+      rl.off('line', onLine);
+      RNCLI.removeReadyListener = undefined;
+    };
+  }
   next.stderr?.on('data', pushOutput);
   next.on('error', onError);
   next.on('close', onClose);
