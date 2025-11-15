@@ -7,6 +7,7 @@ import { IpcMainInvokeEvent, app } from 'electron';
 import fs from 'fs-extra';
 
 import { ipcMainManager } from './ipc';
+import { normaliseMaybeDevtronValue } from './utils/devtron';
 import releases from '../../static/releases.json';
 import { InstallState, Version } from '../interfaces';
 import { IpcEvents } from '../ipc-events';
@@ -151,7 +152,8 @@ export async function setupVersions() {
     event.returnValue = getLatestStable();
   });
   ipcMainManager.on(IpcEvents.GET_LOCAL_VERSION_STATE, (event, ver) => {
-    const normalisedVer = '__uuid__devtron' in ver ? (ver as any).args[0] : ver;
+    const normalisedVer = normaliseMaybeDevtronValue(ver);
+
     event.returnValue = getLocalVersionState(normalisedVer);
   });
   ipcMainManager.on(IpcEvents.GET_OLDEST_SUPPORTED_MAJOR, (event) => {

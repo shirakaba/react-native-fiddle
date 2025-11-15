@@ -19,6 +19,7 @@ import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
 import { eventEmitter, getCurrentTemplateDir } from './fiddle-core-inputs';
 import { ipcMainManager } from './ipc';
 import { treeKill } from './tree-kill';
+import { normaliseMaybeDevtronValue } from './utils/devtron';
 import {
   DownloadVersionParams,
   ProgressObject,
@@ -512,10 +513,7 @@ export async function setupFiddleCore(versions: ElectronVersions) {
   ipcMainManager.on(
     IpcEvents.GET_VERSION_STATE,
     (event: IpcMainEvent, version: string) => {
-      const normalisedVersion =
-        '__uuid__devtron' in (version as unknown as { args: [string] })
-          ? (version as unknown as { args: [string] }).args[0]
-          : version;
+      const normalisedVersion = normaliseMaybeDevtronValue(version);
 
       event.returnValue = installer.state(normalisedVersion);
     },
