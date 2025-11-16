@@ -100,7 +100,7 @@ export async function startFiddle(
   hostApp.stdout?.on('data', pushOutput);
   hostApp.stderr?.on('data', pushOutput);
 
-  hostApp.on('close', async (code, signal) => {
+  hostApp.on('close', async () => {
     childProcesses.hostApp = null;
     if (childProcesses.RNCLI) {
       console.log(`[CLOSE] hostApp (but waiting on RNCLI ⏳)`);
@@ -110,7 +110,6 @@ export async function startFiddle(
     console.log(`[CLOSE] hostApp (RNCLI already closed) 👍`);
 
     fiddleProcesses.delete(webContents);
-    ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   });
 
   // This is a bit fragile, but I'm not clear that there is any first-class way
@@ -281,7 +280,7 @@ function restartRNCLI({
   next.on('error', onError);
   next.on('close', onClose);
 
-  function onClose(code: number | null, signal: NodeJS.Signals | null) {
+  function onClose() {
     if (childProcesses.RNCLI?.relaunchInProgress) {
       console.log(`[CLOSE] RNCLI (closing due to relaunch) ♻️`);
       return;
@@ -296,7 +295,6 @@ function restartRNCLI({
     console.log(`[CLOSE] RNCLI (hostApp already closed) 👍`);
 
     fiddleProcesses.delete(webContents);
-    ipcMainManager.send(IpcEvents.FIDDLE_STOPPED, [code, signal], webContents);
   }
 
   function onError(error: Error) {
@@ -503,14 +501,54 @@ async function killChildProcess(
   return await new Promise<{
     code: number | null;
     signal: NodeJS.Signals | null;
-  }>((resolve) => {
+  }>(async (resolve) => {
     child.once('close', (code, signal) => {
+      console.log(
+        `[stopFiddle] Got 'close' event for ${type}. Code: ${code}. Signal ${signal}.`,
+      );
+      clearTimeout(sigKillTimeout);
       resolve({ code, signal });
     });
 
+    if (type === 'RNCLI' && platform === 'darwin') {
+      let metroPid: number | undefined;
+      try {
+        // Amazingly, even tree-killing RNCLI doesn't seem to be enough, as the
+        // Metro server continues to run on 8081 undeterred. I guess it's run as
+        // a forked process. As such, let's hunt it down by its port.
+        const { stdout } = await execPromise('lsof -i :8081');
+        const lines = stdout.split('\n');
+        const metroProcess = lines.find((line) => line.startsWith('node'));
+        if (metroProcess) {
+          const match = /node\s+(\d+)/.exec(metroProcess);
+          const matchedPid = match?.at(1);
+          if (matchedPid) {
+            const parsedPid = Number.parseInt(matchedPid);
+            if (!Number.isNaN(parsedPid)) {
+              metroPid = parsedPid;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          `Unable to identify Metro process, so may not have any luck properly killing the RNCLI.`,
+          error,
+        );
+      }
+
+      if (typeof metroPid === 'number') {
+        try {
+          await execPromise(`kill ${metroPid}`);
+          console.log(`Killed Metro pid ${metroPid}.`);
+        } catch (error) {
+          console.error(`Error trying to kill the Metro pid.`, error);
+        }
+      }
+    }
+
     treeKill(pid, 'SIGTERM');
 
-    setTimeout(() => {
+    const sigKillTimeout = setTimeout(() => {
       if (child.exitCode !== null) {
         // Handle the imaginary case that we beat the 'close' listener in a
         // race.
@@ -522,12 +560,6 @@ async function killChildProcess(
         `[stopFiddle] tree kill of ${type} wasn't enough, so will SIGKILL`,
       );
       treeKill(pid, 'SIGKILL');
-
-      // FIXME: It seems that even when we reach this point, the Metro server
-      // remains alive. Very tempted at this point to do a `lsof -i :8081` and
-      // kill whatever zombie is on that pid (probably from command `node`
-      // rather than `Electron`). I wonder if the whole root of the problem is
-      // that RNCLI forks the dev server process?
     }, 1000);
   });
 }
