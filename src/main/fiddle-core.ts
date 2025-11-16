@@ -76,18 +76,11 @@ export async function startFiddle(
 
   Object.assign(env, params.env);
 
-  const hostApp = await runner.spawn(
-    isValidBuild && localPath ? Installer.getExecPath(localPath) : version,
-    dir,
-    { args: options, cwd: dir, env },
-  );
-
   let childProcesses = fiddleProcesses.get(webContents);
   if (!childProcesses) {
     childProcesses = { hostApp: null, RNCLI: null };
     fiddleProcesses.set(webContents, childProcesses);
   }
-  childProcesses.hostApp = { childProcess: hostApp };
 
   const pushOutput = (data: string | Buffer) => {
     ipcMainManager.send(
@@ -96,6 +89,35 @@ export async function startFiddle(
       webContents,
     );
   };
+
+  // This is a bit fragile, but I'm not clear that there is any first-class way
+  // to get the template directory otherwise.
+  const templateCwd = getCurrentTemplateDir();
+
+  // We avoid launching the host app until the RNCLI dev server has started
+  // listening on port 8081. This avoids the host app launching with a red alert
+  // saying that it wasn't able to connect to a dev server.
+  await new Promise<void>((resolve) => {
+    restartRNCLI({
+      prev: undefined,
+      childProcesses,
+      webContents,
+      pushOutput,
+      templateCwd,
+      cwd: templateCwd,
+      onDevServerReady: () => {
+        resolve();
+      },
+    });
+  });
+
+  const hostApp = await runner.spawn(
+    isValidBuild && localPath ? Installer.getExecPath(localPath) : version,
+    dir,
+    { args: options, cwd: dir, env },
+  );
+
+  childProcesses.hostApp = { childProcess: hostApp };
 
   hostApp.stdout?.on('data', pushOutput);
   hostApp.stderr?.on('data', pushOutput);
@@ -111,20 +133,6 @@ export async function startFiddle(
 
     fiddleProcesses.delete(webContents);
   });
-
-  // This is a bit fragile, but I'm not clear that there is any first-class way
-  // to get the template directory otherwise.
-  const templateCwd = getCurrentTemplateDir();
-  console.log(`[fiddle-core] got templateCwd: "${templateCwd}"`);
-
-  restartRNCLI({
-    prev: undefined,
-    childProcesses,
-    webContents,
-    pushOutput,
-    templateCwd,
-    cwd: templateCwd,
-  });
 }
 
 function restartRNCLI({
@@ -134,6 +142,7 @@ function restartRNCLI({
   pushOutput,
   cwd,
   templateCwd,
+  onDevServerReady,
 }: {
   prev?: ChildProcess;
   childProcesses: FiddleProcessesValue;
@@ -141,6 +150,7 @@ function restartRNCLI({
   pushOutput: (data: string | Buffer) => void;
   cwd: string;
   templateCwd: string;
+  onDevServerReady?: () => void;
 }) {
   if (prev) {
     // Clean up previous RNCLI instance
@@ -177,6 +187,13 @@ function restartRNCLI({
     const onLine = async (line: string) => {
       pushOutput(line);
 
+      if (!line.includes('Dev server ready.')) {
+        // RNCLI hasn't started running the Metro dev server yet.
+        return;
+      }
+
+      onDevServerReady?.();
+
       // Trigger automatic reconnection to the new RNCLI instance.
 
       if (!prev) {
@@ -211,12 +228,6 @@ function restartRNCLI({
           reconnectState = lastreconnectState;
         },
       };
-
-      if (!line.includes('Dev server ready.')) {
-        // RNCLI hasn't started running the Metro dev server yet.
-        reconnectState.revert();
-        return;
-      }
 
       if (platform !== 'darwin') {
         console.warn(
