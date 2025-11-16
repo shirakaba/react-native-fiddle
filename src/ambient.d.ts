@@ -55,7 +55,10 @@ declare global {
       ): void;
       addEventListener(
         type: 'fiddle-stopped',
-        listener: (code: number | null, signal: string | null) => void,
+        listener: (
+          hostApp: { code: number | null; signal: string | null },
+          RNCLI: { code: number | null; signal: string | null },
+        ) => void,
       ): void;
       addEventListener(
         type: 'load-example',

@@ -417,73 +417,119 @@ function restartRNCLI({
 /**
  * Stop a currently running Electron fiddle.
  */
-export function stopFiddle(webContents: WebContents): void {
+export async function stopFiddle(
+  webContents: WebContents,
+): Promise<{ hostAppResult: ChildKillResult; RNCLIResult: ChildKillResult }> {
+  eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
+
   const childProcesses = fiddleProcesses.get(webContents);
   if (!childProcesses) {
     console.log(`[stopFiddle] bailing because no childProcesses`);
-    return;
+    return {
+      hostAppResult: {
+        type: 'resolve',
+        result: { code: null, signal: null },
+      },
+      RNCLIResult: {
+        type: 'resolve',
+        result: { code: null, signal: null },
+      },
+    };
   }
 
-  const childProcessesThemselves = [
-    childProcesses.RNCLI?.childProcess,
-    childProcesses.hostApp?.childProcess,
-  ].filter((childProcess) => !!childProcess);
+  const { hostApp, RNCLI } = childProcesses;
 
-  console.log(
-    `[stopFiddle] childProcessesThemselves`,
-    childProcessesThemselves.map(({ pid, spawnargs, killed, connected }) => ({
-      pid,
-      spawnargs,
-      killed,
-      connected,
-    })),
-  );
-
-  for (const [index, child] of Object.entries(childProcessesThemselves)) {
-    if (typeof child.pid !== 'number') {
-      console.log(
-        `[stopFiddle] childProcessesThemselves[${index}] skipping due to no pid`,
-      );
-      continue;
-    }
-
-    console.log(
-      `[stopFiddle] childProcessesThemselves[${index}] killing with SIGTERM...`,
-    );
-
-    // Although child.kill() is sufficient for killing the hostApp child
-    // process, to kill RNCLI, it is necessary to kill its grandchild processes
-    // (i.e. the Metro bundler) too, hence we have to bring in treeKill().
-    treeKill(child.pid, 'SIGTERM');
-
-    // If the child process is still alive 1 second after we've
-    // attempted to kill it by normal means, kill it forcefully.
-    setTimeout(() => {
-      if (child.exitCode === null) {
-        if (typeof child.pid !== 'number') {
-          console.log(
-            `[stopFiddle] childProcessesThemselves[${index}] tree kill wasn't enough, so want to SIGKILL, but can't as we don't even have a pid`,
-          );
-          return;
-        }
-
-        console.log(
-          `[stopFiddle] childProcessesThemselves[${index}] tree kill wasn't enough, so will SIGKILL`,
-        );
-        treeKill(child.pid, 'SIGKILL');
-
-        // FIXME: It seems that even when we reach this point, the Metro server
-        // remains alive. Very tempted at this point to do a `lsof -i :8081` and
-        // kill whatever zombie is on that pid (probably from command `node`
-        // rather than `Electron`). I wonder if the whole root of the problem is
-        // that RNCLI forks the dev server process?
-      }
-    }, 1000);
+  let hostAppPromise: Promise<ChildKillResult>;
+  if (hostApp?.childProcess) {
+    hostAppPromise = killChildProcess(hostApp.childProcess, 'hostApp')
+      .then((result) => ({ type: 'resolve' as const, result }))
+      .catch((error) => ({ type: 'reject' as const, error }));
+  } else {
+    console.warn(`[stopFiddle] hostApp was unexpectedly nullish.`);
+    hostAppPromise = Promise.resolve({
+      type: 'resolve',
+      result: { code: null, signal: null },
+    });
   }
 
-  eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
+  let RNCLIPromise: Promise<ChildKillResult>;
+  if (RNCLI?.childProcess) {
+    RNCLIPromise = killChildProcess(RNCLI.childProcess, 'RNCLI')
+      .then((result) => ({ type: 'resolve' as const, result }))
+      .catch((error) => ({ type: 'reject' as const, error }));
+  } else {
+    console.warn(`[stopFiddle] RNCLI was unexpectedly nullish.`);
+    RNCLIPromise = Promise.resolve({
+      type: 'resolve',
+      result: { code: null, signal: null },
+    });
+  }
+
+  const [hostAppResult, RNCLIResult] = await Promise.all([
+    hostAppPromise,
+    RNCLIPromise,
+  ]);
 
   console.log(`[stopFiddle] all done!`);
+
+  return { hostAppResult, RNCLIResult };
+}
+
+/**
+ * The "reject" path is not currently used (in all illegal states, resolving
+ * `{ code: null, signal: null })` seems reasonable enough). But it's a bigger
+ * refactor to change our mind in future, so I'm keeping it in.
+ */
+type ChildKillResult =
+  | {
+      type: 'resolve';
+      result: { code: number | null; signal: NodeJS.Signals | null };
+    }
+  | { type: 'reject'; error: unknown };
+
+async function killChildProcess(
+  child: ChildProcess,
+  type: 'RNCLI' | 'hostApp',
+) {
+  const { pid } = child;
+  if (typeof pid !== 'number') {
+    console.log(
+      `Child process for type ${type} lacked pid, so (unexpectedly) failed to spawn in the first place.`,
+    );
+
+    return { code: child.exitCode, signal: child.signalCode };
+  }
+
+  return await new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve) => {
+    child.once('close', (code, signal) => {
+      resolve({ code, signal });
+    });
+
+    treeKill(pid, 'SIGTERM');
+
+    setTimeout(() => {
+      if (child.exitCode !== null) {
+        // Handle the imaginary case that we beat the 'close' listener in a
+        // race.
+        resolve({ code: child.exitCode, signal: child.signalCode });
+        return;
+      }
+
+      console.log(
+        `[stopFiddle] tree kill of ${type} wasn't enough, so will SIGKILL`,
+      );
+      treeKill(pid, 'SIGKILL');
+
+      // FIXME: It seems that even when we reach this point, the Metro server
+      // remains alive. Very tempted at this point to do a `lsof -i :8081` and
+      // kill whatever zombie is on that pid (probably from command `node`
+      // rather than `Electron`). I wonder if the whole root of the problem is
+      // that RNCLI forks the dev server process?
+    }, 1000);
+  });
 }
 
 export async function setupFiddleCore(versions: ElectronVersions) {
@@ -574,7 +620,46 @@ export async function setupFiddleCore(versions: ElectronVersions) {
       await startFiddle(event.sender, params);
     },
   );
-  ipcMainManager.on(IpcEvents.STOP_FIDDLE, (event: IpcMainEvent) => {
-    stopFiddle(event.sender);
+  ipcMainManager.on(IpcEvents.STOP_FIDDLE, async (event: IpcMainEvent) => {
+    const { hostAppResult, RNCLIResult } = await stopFiddle(event.sender);
+
+    let hostApp: { code: number | null; signal: string | null };
+    switch (hostAppResult.type) {
+      case 'resolve': {
+        hostApp = hostAppResult.result;
+        break;
+      }
+      case 'reject': {
+        console.error(
+          `Unexpected error when killing the host app.`,
+          hostAppResult.error,
+        );
+        hostApp = { code: null, signal: null };
+        break;
+      }
+    }
+
+    let RNCLI: { code: number | null; signal: string | null };
+    switch (RNCLIResult.type) {
+      case 'resolve': {
+        RNCLI = RNCLIResult.result;
+        break;
+      }
+      case 'reject': {
+        console.error(
+          `Unexpected error when killing the host app.`,
+          RNCLIResult.error,
+        );
+        RNCLI = { code: null, signal: null };
+        break;
+      }
+    }
+
+    // Triggers 'fiddle-stopped' in src/renderer/runner.ts
+    ipcMainManager.send(
+      IpcEvents.FIDDLE_STOPPED,
+      [hostApp, RNCLI],
+      event.sender,
+    );
   });
 }

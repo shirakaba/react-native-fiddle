@@ -408,15 +408,26 @@ export class Runner {
 
       window.ElectronFiddle.addEventListener(
         'fiddle-stopped',
-        async (code, signal) => {
+        async (hostApp, RNCLI) => {
           await cleanup();
 
-          if (typeof code !== 'number') {
-            pushOutput(`Electron exited with signal ${signal}.`);
+          if (
+            typeof hostApp.code !== 'number' ||
+            typeof RNCLI.code !== 'number'
+          ) {
+            pushOutput(
+              `React Native exited with signal ${hostApp.signal}, and RNCLI exited with signal ${RNCLI.signal}.`,
+            );
             resolve(RunResult.FAILURE);
           } else {
-            pushOutput(`Electron exited with code ${code}.`);
-            resolve(code === 0 ? RunResult.SUCCESS : RunResult.FAILURE);
+            pushOutput(
+              `React Native exited with code ${hostApp.code}, and RNCLI exited with code ${RNCLI.code}.`,
+            );
+            resolve(
+              hostApp.code === 0 && RNCLI.code === 0
+                ? RunResult.SUCCESS
+                : RunResult.FAILURE,
+            );
           }
         },
       );
