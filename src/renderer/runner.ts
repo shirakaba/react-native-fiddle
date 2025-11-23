@@ -139,7 +139,12 @@ export class Runner {
    * Actually run the fiddle.
    */
   public async run(): Promise<RunResult> {
-    const options = { includeDependencies: false, includeElectron: false };
+    // JB: I've flipped `includeElectron: false`! This makes sure that the
+    // "react-native-macos" dependency gets written into
+    // src/renderer/utils/get-package.ts, which means that rnx-cli can correctly
+    // detect that Metro should rewrite imports of "react-native" to
+    // "react-native-macos".
+    const options = { includeDependencies: false, includeElectron: true };
 
     const { appState } = this;
     const currentRunnable = appState.currentElectronVersion;

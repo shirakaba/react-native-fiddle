@@ -130,17 +130,6 @@ export async function startFiddle(
     templateDirLackingNodeModules,
   });
 
-  // FIXME: RNCLI immediately exits with code 1 due to:
-  // > error: unknown command 'start'
-  //
-  // I'm not sure how to solve this, but it's clear that when run RNCLI against
-  // a symlinked node_modules directory, it only registers some minimal commands
-  // like `help` and not `start`.
-  //
-  // Provisionally, I'm trying out rnx-cli instead (which doesn't suffer this
-  // problem). But now we have to solve a different problem, which is the Metro
-  // resolution.
-
   // We avoid launching the host app until the RNCLI dev server has started
   // listening on port 8081. This avoids the host app launching with a red alert
   // saying that it wasn't able to connect to a dev server.
@@ -209,7 +198,14 @@ function restartRNCLI({
 
   const next = spawn('node', ['--run', 'start'], {
     cwd,
-    stdio: 'pipe',
+    // Inherit the stdin. Although users have no way to input into stdin
+    // themselves, we can fire keypresses into process.stdin if we want, which
+    // we may find useful for something (heck, I should have implemented
+    // auto-reconnect this way).
+    //
+    // But the main reason is just to make rnx-cli behave like a TTY so that it
+    // displays our "Dev server ready." message.
+    stdio: ['inherit', 'pipe', 'pipe'],
   });
 
   eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
@@ -454,8 +450,13 @@ function restartRNCLI({
 }
 
 /**
- * We have a node_modules folder in our original template, but manually
- * saved templates omit it for some reason, so we'll symlink back to it.
+ * We have a node_modules folder in our original template, but manually saved
+ * templates omit it for some reason, so we'll symlink back to it.
+ *
+ * Unfortunately, React Native Community CLI does not work with a symlinked
+ * node_modules for some reason. Commands like `start` cease to be recognised,
+ * and only `--help` continues to work. So I've switched to \@rnx-kit/cli
+ * instead.
  */
 async function symlinkNodeModules({
   templateDirContainingRealNodeModules,
