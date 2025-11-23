@@ -62,6 +62,11 @@ export async function startFiddle(
     options,
     version,
   } = params;
+
+  console.log(
+    `[CWD] window.ElectronFiddle.startFiddle() called with params: ${JSON.stringify(params)}`,
+  );
+
   const env = { ...process.env };
 
   if (enableElectronLogging) {
@@ -91,8 +96,50 @@ export async function startFiddle(
   };
 
   // This is a bit fragile, but I'm not clear that there is any first-class way
-  // to get the template directory otherwise.
-  const templateCwd = getCurrentTemplateDir();
+  // to get the template directory (that contains the real node_modules)
+  // otherwise.
+  //
+  // Also: apologies for the poor variable names. Electron Fiddle uses at least
+  // four different locations for templates:
+  // 1. The download from the react-native-fiddle-repro repo, in:
+  //    ~/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y
+  // 2. The "source", stored in a temporary dir, e.g.:
+  //    /private/var/folders/0m/nf10bfxx6rgft8tn29fznymc0000gn/T/electron-fiddle-92608-0MCpHD4jYdhV
+  // 3. The "local copy", stored in the Caches dir, e.g.:
+  //    ~/Library/Caches/fiddle-core/fiddles/102ca20d3c7d06bb3f74202afcaf2bb1
+  // 4. The user-saved copy, stored wherever the user chooses.
+  // … I'm not really clear of the reasoning! All I can say is that only (1)
+  // contains a node_modules.
+  const templateDirContainingRealNodeModules = getCurrentTemplateDir();
+
+  // Electron Fiddle logs out these debug logs:
+  // > - fiddle:
+  // >     - source: /private/var/folders/0m/nf10bfxx6rgft8tn29fznymc0000gn/T/electron-fiddle-92608-0MCpHD4jYdhV
+  // >     - local copy: /Users/jamie/Library/Caches/fiddle-core/fiddles/102ca20d3c7d06bb3f74202afcaf2bb1
+  // They come from: node_modules/@electron/fiddle-core/dist/runner.js
+  //
+  // params.localPath and params.options[0] both give the fiddle source logged
+  // out above.
+  const templateDirLackingNodeModules = dir;
+  console.log(
+    `[CWD] window.ElectronFiddle.startFiddle() shall serve from params.dir "${templateDirLackingNodeModules}". params.localPath was: "${params.localPath ?? '<undefined>'}"`,
+  );
+
+  await symlinkNodeModules({
+    templateDirContainingRealNodeModules,
+    templateDirLackingNodeModules,
+  });
+
+  // FIXME: RNCLI immediately exits with code 1 due to:
+  // > error: unknown command 'start'
+  //
+  // I'm not sure how to solve this, but it's clear that when run RNCLI against
+  // a symlinked node_modules directory, it only registers some minimal commands
+  // like `help` and not `start`.
+  //
+  // Provisionally, I'm trying out rnx-cli instead (which doesn't suffer this
+  // problem). But now we have to solve a different problem, which is the Metro
+  // resolution.
 
   // We avoid launching the host app until the RNCLI dev server has started
   // listening on port 8081. This avoids the host app launching with a red alert
@@ -103,8 +150,8 @@ export async function startFiddle(
       childProcesses,
       webContents,
       pushOutput,
-      templateCwd,
-      cwd: templateCwd,
+      templateDirContainingRealNodeModules,
+      cwd: templateDirLackingNodeModules,
       onDevServerReady: () => {
         resolve();
       },
@@ -141,7 +188,7 @@ function restartRNCLI({
   webContents,
   pushOutput,
   cwd,
-  templateCwd,
+  templateDirContainingRealNodeModules,
   onDevServerReady,
 }: {
   prev?: ChildProcess;
@@ -149,7 +196,7 @@ function restartRNCLI({
   webContents: WebContents;
   pushOutput: (data: string | Buffer) => void;
   cwd: string;
-  templateCwd: string;
+  templateDirContainingRealNodeModules: string;
   onDevServerReady?: () => void;
 }) {
   if (prev) {
@@ -313,7 +360,9 @@ function restartRNCLI({
   }
 
   async function onSavedLocalFiddle(dirname: string) {
-    console.log('[IpcEvents.SAVED_LOCAL_FIDDLE] dirname:', dirname);
+    console.log(
+      `[CWD] window.ElectronFiddle.restartRNCLI() > onSavedLocalFiddle() shall serve "${dirname}"`,
+    );
     const RNCLI = childProcesses.RNCLI;
     if (!RNCLI) {
       return;
@@ -388,21 +437,10 @@ function restartRNCLI({
      * We have a node_modules folder in our original template, but manually
      * saved templates omit it for some reason, so we'll symlink back to it.
      */
-    const nodeModulesTarget = path.resolve(templateCwd, 'node_modules');
-    const symlinkPath = path.resolve(dirname, 'node_modules');
-    try {
-      await fsPromises.symlink(nodeModulesTarget, symlinkPath, 'dir');
-    } catch (cause) {
-      if (
-        !(cause instanceof Error) ||
-        !('code' in cause) ||
-        cause.code !== 'EEXIST'
-      ) {
-        throw new Error('Unable to symlink node_modules into save location', {
-          cause,
-        });
-      }
-    }
+    await symlinkNodeModules({
+      templateDirContainingRealNodeModules,
+      templateDirLackingNodeModules: dirname,
+    });
 
     restartRNCLI({
       prev: next,
@@ -410,8 +448,43 @@ function restartRNCLI({
       webContents,
       pushOutput,
       cwd: dirname,
-      templateCwd,
+      templateDirContainingRealNodeModules,
     });
+  }
+}
+
+/**
+ * We have a node_modules folder in our original template, but manually
+ * saved templates omit it for some reason, so we'll symlink back to it.
+ */
+async function symlinkNodeModules({
+  templateDirContainingRealNodeModules,
+  templateDirLackingNodeModules,
+}: {
+  templateDirContainingRealNodeModules: string;
+  templateDirLackingNodeModules: string;
+  type?: string | null;
+}) {
+  const nodeModulesTarget = path.resolve(
+    templateDirContainingRealNodeModules,
+    'node_modules',
+  );
+  const symlinkPath = path.resolve(
+    templateDirLackingNodeModules,
+    'node_modules',
+  );
+  try {
+    await fsPromises.symlink(nodeModulesTarget, symlinkPath, 'dir');
+  } catch (cause) {
+    if (
+      !(cause instanceof Error) ||
+      !('code' in cause) ||
+      cause.code !== 'EEXIST'
+    ) {
+      throw new Error('Unable to symlink node_modules into save location', {
+        cause,
+      });
+    }
   }
 }
 
