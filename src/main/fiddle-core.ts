@@ -344,15 +344,7 @@ function restartRNCLI({
         RNCLI.relaunchInProgress = true;
 
         try {
-          await new Promise<void>((resolve, reject) => {
-            treeKill(pid, 'SIGTERM', (error?: Error) => {
-              if (error) {
-                reject(error);
-              } else {
-                resolve();
-              }
-            });
-          });
+          await killChildProcess(RNCLI.childProcess, 'RNCLI');
           return 'Continue';
         } catch (error) {
           const buttons = ['Retry', 'Cancel'] as const;
