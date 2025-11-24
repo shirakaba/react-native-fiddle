@@ -86,7 +86,9 @@ describe('themes', () => {
       (fs.readJSON as Mock).mockResolvedValueOnce({});
 
       const theme = await readThemeFile('myfile.json');
-      const expected = path.normalize(`~/.electron-fiddle/themes/myfile.json`);
+      const expected = path.normalize(
+        `~/.react-native-fiddle/themes/myfile.json`,
+      );
 
       expect(theme).toBeTruthy();
       expect(fs.readJSON).toHaveBeenCalledWith(expected);
@@ -96,7 +98,9 @@ describe('themes', () => {
       (fs.readJSON as Mock).mockResolvedValueOnce({});
 
       const theme = await readThemeFile('myfile');
-      const expected = path.normalize(`~/.electron-fiddle/themes/myfile.json`);
+      const expected = path.normalize(
+        `~/.react-native-fiddle/themes/myfile.json`,
+      );
 
       expect(theme).toBeTruthy();
       expect(fs.readJSON).toHaveBeenCalledWith(expected);

@@ -567,8 +567,8 @@ export class AppState {
    */
   get title(): string {
     return this.editorMosaic.isEdited
-      ? 'Electron Fiddle - Unsaved'
-      : 'Electron Fiddle';
+      ? 'React Native Fiddle - Unsaved'
+      : 'React Native Fiddle';
   }
 
   /**

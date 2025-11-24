@@ -69,7 +69,7 @@ describe('processCommandLine()', () => {
     const consoleSpy = vi.spyOn(console, 'log').mockReset();
     await processCommandLine(argv);
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringMatching('electron-fiddle started'),
+      expect.stringMatching('react-native-fiddle started'),
     );
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringMatching(`platform: ${process.platform}`),

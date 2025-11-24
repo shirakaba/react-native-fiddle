@@ -166,6 +166,6 @@ jobs:
           SENTRY_PROJECT: electron-fiddle
         with:
           environment: production
-          release: Electron-Fiddle@${{ github.ref_name }}
+          release: React-Native-Fiddle@${{ github.ref_name }}
           sourcemaps: ./.webpack/
           url_prefix: '~/.webpack'

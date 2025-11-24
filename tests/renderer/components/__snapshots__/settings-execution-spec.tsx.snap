@@ -6,7 +6,7 @@ exports[`ExecutionSettings component > renders 1`] = `
     Execution
   </h1>
   <Blueprint3.Callout>
-    These advanced settings control how Electron Fiddle executes your fiddles.
+    These advanced settings control how React Native Fiddle executes your fiddles.
   </Blueprint3.Callout>
   <br />
   <Blueprint3.Callout>

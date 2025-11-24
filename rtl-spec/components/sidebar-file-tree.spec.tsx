@@ -9,6 +9,7 @@ import {
   MAIN_CJS,
   MAIN_JS,
   PACKAGE_NAME,
+  ROOT_UI_COMPONENT_JS,
 } from '../../src/interfaces';
 import { Editors } from '../../src/renderer/components/editors';
 import { SidebarFileTree } from '../../src/renderer/components/sidebar-file-tree';
@@ -40,7 +41,7 @@ describe('SidebarFileTree component', () => {
   });
 
   it('reflects the visibility state of all icons', () => {
-    editorMosaic.hide('index.html');
+    editorMosaic.hide(ROOT_UI_COMPONENT_JS);
     const { container } = render(<SidebarFileTree appState={store} />);
 
     // Check that an 'eye-off' icon is present for the hidden file
@@ -75,7 +76,9 @@ describe('SidebarFileTree component', () => {
     const firstButton = visibilityButtons[0]?.parentElement;
     await user.click(firstButton!);
 
-    expect(editorMosaic.files.get('index.html')).toBe(EditorPresence.Hidden);
+    expect(editorMosaic.files.get(ROOT_UI_COMPONENT_JS)).toBe(
+      EditorPresence.Hidden,
+    );
   });
 
   it('can create new editors', async () => {
@@ -103,11 +106,13 @@ describe('SidebarFileTree component', () => {
     const user = userEvent.setup();
     const { container } = render(<SidebarFileTree appState={store} />);
 
-    expect(editorMosaic.files.get('index.html')).toBe(EditorPresence.Pending);
+    expect(editorMosaic.files.get(ROOT_UI_COMPONENT_JS)).toBe(
+      EditorPresence.Pending,
+    );
 
-    // Right-click on index.html to open context menu
+    // Right-click on root UI component to open context menu
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
-      (el) => el.textContent === 'index.html',
+      (el) => el.textContent === ROOT_UI_COMPONENT_JS,
     ) as HTMLElement;
     expect(fileLabel).toBeInTheDocument();
     fireEvent.contextMenu(fileLabel);
@@ -116,13 +121,13 @@ describe('SidebarFileTree component', () => {
     const deleteItem = await screen.findByText('Delete');
     await user.click(deleteItem);
 
-    expect(editorMosaic.files.get('index.html')).toBe(undefined);
+    expect(editorMosaic.files.get(ROOT_UI_COMPONENT_JS)).toBe(undefined);
   });
 
   it('can rename editors', async () => {
     const user = userEvent.setup();
-    const EDITOR_NAME = 'index.html';
-    const EDITOR_NEW_NAME = 'new_index.html';
+    const EDITOR_NAME = ROOT_UI_COMPONENT_JS;
+    const EDITOR_NEW_NAME = `new_${ROOT_UI_COMPONENT_JS}`;
 
     store.showInputDialog = vi.fn().mockResolvedValueOnce(EDITOR_NEW_NAME);
 
@@ -130,7 +135,7 @@ describe('SidebarFileTree component', () => {
 
     expect(editorMosaic.files.get(EDITOR_NAME)).toBe(EditorPresence.Pending);
 
-    // Right-click on index.html to open context menu
+    // Right-click on root UI component to open context menu
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
       (el) => el.textContent === EDITOR_NAME,
     ) as HTMLElement;
@@ -179,7 +184,7 @@ describe('SidebarFileTree component', () => {
 
   it('fails if trying to rename an editor to package(-lock).json', async () => {
     const user = userEvent.setup();
-    const EDITOR_NAME = 'index.html';
+    const EDITOR_NAME = ROOT_UI_COMPONENT_JS;
     const EDITOR_NEW_NAME = PACKAGE_NAME;
 
     store.showInputDialog = vi.fn().mockResolvedValueOnce(EDITOR_NEW_NAME);
@@ -187,7 +192,7 @@ describe('SidebarFileTree component', () => {
 
     const { container } = render(<SidebarFileTree appState={store} />);
 
-    // Right-click on index.html to open context menu
+    // Right-click on root UI component to open context menu
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
       (el) => el.textContent === EDITOR_NAME,
     ) as HTMLElement;
@@ -209,7 +214,7 @@ describe('SidebarFileTree component', () => {
 
   it('fails if trying to rename an editor to an unsupported name', async () => {
     const user = userEvent.setup();
-    const EDITOR_NAME = 'index.html';
+    const EDITOR_NAME = ROOT_UI_COMPONENT_JS;
     const EDITOR_NEW_NAME = 'data.txt';
 
     store.showInputDialog = vi.fn().mockResolvedValueOnce(EDITOR_NEW_NAME);
@@ -217,7 +222,7 @@ describe('SidebarFileTree component', () => {
 
     const { container } = render(<SidebarFileTree appState={store} />);
 
-    // Right-click on index.html to open context menu
+    // Right-click on root UI component to open context menu
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
       (el) => el.textContent === EDITOR_NAME,
     ) as HTMLElement;
@@ -239,8 +244,8 @@ describe('SidebarFileTree component', () => {
 
   it('fails if trying to rename an editor to an existing name', async () => {
     const user = userEvent.setup();
-    const EXISTED_NAME = 'styles.css';
-    const TO_BE_NAMED = 'index.html';
+    const EXISTED_NAME = MAIN_JS;
+    const TO_BE_NAMED = ROOT_UI_COMPONENT_JS;
     const EDITOR_NEW_NAME = EXISTED_NAME;
 
     store.showInputDialog = vi.fn().mockResolvedValueOnce(EDITOR_NEW_NAME);
@@ -248,7 +253,7 @@ describe('SidebarFileTree component', () => {
 
     const { container } = render(<SidebarFileTree appState={store} />);
 
-    // Right-click on index.html to open context menu
+    // Right-click on root UI component to open context menu
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
       (el) => el.textContent === TO_BE_NAMED,
     ) as HTMLElement;
@@ -270,7 +275,7 @@ describe('SidebarFileTree component', () => {
 
   it('fails if trying to rename an editor to another main entry point file', async () => {
     const user = userEvent.setup();
-    const TO_BE_NAMED = 'index.html';
+    const TO_BE_NAMED = ROOT_UI_COMPONENT_JS;
     const EDITOR_NEW_NAME = MAIN_CJS;
 
     store.showInputDialog = vi.fn().mockResolvedValueOnce(EDITOR_NEW_NAME);
@@ -278,7 +283,7 @@ describe('SidebarFileTree component', () => {
 
     const { container } = render(<SidebarFileTree appState={store} />);
 
-    // Right-click on index.html to open context menu
+    // Right-click on root UI component to open context menu
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
       (el) => el.textContent === TO_BE_NAMED,
     ) as HTMLElement;
@@ -318,16 +323,18 @@ describe('SidebarFileTree component', () => {
     const { container } = render(<SidebarFileTree appState={store} />);
     render(<Editors appState={stateMock as unknown as AppState} />);
 
-    // Click on index.html to focus it
+    // Click on root UI component to focus it
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
-      (el) => el.textContent === 'index.html',
+      (el) => el.textContent === ROOT_UI_COMPONENT_JS,
     ) as HTMLElement;
     await user.click(fileLabel);
 
     // Wait for the file to become visible and focused
     await waitFor(() => {
-      expect(editorMosaic.files.get('index.html')).toBe(EditorPresence.Visible);
-      expect(editorMosaic.focusedFile).toBe('index.html');
+      expect(editorMosaic.files.get(ROOT_UI_COMPONENT_JS)).toBe(
+        EditorPresence.Visible,
+      );
+      expect(editorMosaic.focusedFile).toBe(ROOT_UI_COMPONENT_JS);
     });
   });
 
@@ -343,18 +350,22 @@ describe('SidebarFileTree component', () => {
     const firstButton = visibilityButtons[0]?.parentElement;
     await user.click(firstButton!);
 
-    expect(editorMosaic.files.get('index.html')).toBe(EditorPresence.Hidden);
+    expect(editorMosaic.files.get(ROOT_UI_COMPONENT_JS)).toBe(
+      EditorPresence.Hidden,
+    );
 
-    // Click on index.html to focus it (should also make it visible)
+    // Click on root UI component to focus it (should also make it visible)
     const fileLabel = Array.from(container.querySelectorAll('.pointer')).find(
-      (el) => el.textContent === 'index.html',
+      (el) => el.textContent === ROOT_UI_COMPONENT_JS,
     ) as HTMLElement;
     await user.click(fileLabel);
 
     // Wait for the file to become visible and focused
     await waitFor(() => {
-      expect(editorMosaic.files.get('index.html')).toBe(EditorPresence.Visible);
-      expect(editorMosaic.focusedFile).toBe('index.html');
+      expect(editorMosaic.files.get(ROOT_UI_COMPONENT_JS)).toBe(
+        EditorPresence.Visible,
+      );
+      expect(editorMosaic.focusedFile).toBe(ROOT_UI_COMPONENT_JS);
     });
   });
 });

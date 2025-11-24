@@ -13,7 +13,10 @@ import {
   defaultLight,
 } from '../themes-defaults';
 
-export const CONFIG_PATH = path.join(app.getPath('home'), '.electron-fiddle');
+export const CONFIG_PATH = path.join(
+  app.getPath('home'),
+  '.react-native-fiddle',
+);
 export const THEMES_PATH = path.join(CONFIG_PATH, 'themes');
 
 /**

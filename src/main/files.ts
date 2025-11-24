@@ -154,7 +154,7 @@ export async function deleteUserData(name: string) {
  */
 export async function saveFilesToTemp(files: Files): Promise<string> {
   const dir = tmp.dirSync({
-    prefix: 'electron-fiddle',
+    prefix: 'react-native-fiddle',
   });
 
   tmp.setGracefulCleanup();

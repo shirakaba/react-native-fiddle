@@ -76,7 +76,7 @@ describe('AddThemeDialog component', () => {
         ),
       });
 
-      const themePath = '~/.electron-fiddle/themes/testingLight';
+      const themePath = '~/.react-native-fiddle/themes/testingLight';
       vi.mocked(window.ElectronFiddle.createThemeFile).mockResolvedValue({
         file: themePath,
       } as LoadedFiddleTheme);

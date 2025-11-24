@@ -20,7 +20,7 @@ const commonLinuxConfig = {
     '1024x1024': path.resolve(iconDir, 'fiddle.png'),
     scalable: path.resolve(iconDir, 'fiddle.svg'),
   },
-  mimeType: ['x-scheme-handler/electron-fiddle'],
+  mimeType: ['x-scheme-handler/react-native-fiddle'],
 };
 
 const requirements = path.resolve(__dirname, 'tools/certs/requirements.txt');
@@ -68,11 +68,11 @@ const config: ForgeConfig = {
     }),
   ],
   packagerConfig: {
-    name: 'Electron Fiddle',
-    executableName: 'electron-fiddle',
+    name: 'React Native Fiddle',
+    executableName: 'react-native-fiddle',
     asar: true,
     icon: path.resolve(__dirname, 'assets', 'icons', 'fiddle'),
-    appBundleId: 'com.electron.fiddle',
+    appBundleId: 'uk.co.birchlabs.reactnativefiddle',
     usageDescription: {
       Camera:
         'Access is needed by certain built-in fiddles in addition to any custom fiddles that use the Camera',
@@ -88,13 +88,13 @@ const config: ForgeConfig = {
     appCategoryType: 'public.app-category.developer-tools',
     protocols: [
       {
-        name: 'Electron Fiddle Launch Protocol',
-        schemes: ['electron-fiddle'],
+        name: 'React Native Fiddle Launch Protocol',
+        schemes: ['react-native-fiddle'],
       },
     ],
     win32metadata: {
       CompanyName: 'Electron Community',
-      OriginalFilename: 'Electron Fiddle',
+      OriginalFilename: 'React Native Fiddle',
     },
     osxSign: {
       identity:
@@ -115,14 +115,14 @@ const config: ForgeConfig = {
       name: '@electron-forge/maker-squirrel',
       platforms: ['win32'],
       config: (arch: string) => ({
-        name: 'electron-fiddle',
+        name: 'react-native-fiddle',
         authors: 'Electron Community',
-        exe: 'electron-fiddle.exe',
+        exe: 'react-native-fiddle.exe',
         iconUrl:
           'https://raw.githubusercontent.com/electron/fiddle/0119f0ce697f5ff7dec4fe51f17620c78cfd488b/assets/icons/fiddle.ico',
         loadingGif: './assets/loading.gif',
         noMsi: true,
-        setupExe: `electron-fiddle-${version}-win32-${arch}-setup.exe`,
+        setupExe: `react-native-fiddle-${version}-win32-${arch}-setup.exe`,
         setupIcon: path.resolve(iconDir, 'fiddle.ico'),
         signWithParams: process.env.CERT_FINGERPRINT
           ? `/sha1 ${process.env.CERT_FINGERPRINT} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256`

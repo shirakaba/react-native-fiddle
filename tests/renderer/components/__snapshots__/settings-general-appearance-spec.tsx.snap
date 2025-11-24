@@ -77,7 +77,7 @@ exports[`AppearanceSettings component > renders 1`] = `
         onClick={[Function]}
       >
         <code>
-          ~/.electron-fiddle/themes
+          ~/.react-native-fiddle/themes
         </code>
       </a>
       . The easiest way to get started is to clone one of the two existing themes and to add your own colors.

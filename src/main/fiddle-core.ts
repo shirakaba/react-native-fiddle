@@ -48,7 +48,7 @@ const downloadingVersions = new Map<string, Promise<any>>();
 const removingVersions = new Map<string, Promise<void>>();
 
 /**
- * Start running an Electron fiddle.
+ * Start running a React Native fiddle.
  */
 export async function startFiddle(
   webContents: WebContents,
@@ -99,12 +99,12 @@ export async function startFiddle(
   // to get the template directory (that contains the real node_modules)
   // otherwise.
   //
-  // Also: apologies for the poor variable names. Electron Fiddle uses at least
-  // four different locations for templates:
+  // Also: apologies for the poor variable names. React Native Fiddle uses at
+  // least four different locations for templates:
   // 1. The download from the react-native-fiddle-repro repo, in:
-  //    ~/Library/Application Support/Electron Fiddle/Templates/react-native-fiddle-repro-0-x-y
+  //    ~/Library/Application Support/React Native Fiddle/Templates/react-native-fiddle-repro-0-x-y
   // 2. The "source", stored in a temporary dir, e.g.:
-  //    /private/var/folders/0m/nf10bfxx6rgft8tn29fznymc0000gn/T/electron-fiddle-92608-0MCpHD4jYdhV
+  //    /private/var/folders/0m/nf10bfxx6rgft8tn29fznymc0000gn/T/react-native-fiddle-92608-0MCpHD4jYdhV
   // 3. The "local copy", stored in the Caches dir, e.g.:
   //    ~/Library/Caches/fiddle-core/fiddles/102ca20d3c7d06bb3f74202afcaf2bb1
   // 4. The user-saved copy, stored wherever the user chooses.
@@ -112,9 +112,9 @@ export async function startFiddle(
   // contains a node_modules.
   const templateDirContainingRealNodeModules = getCurrentTemplateDir();
 
-  // Electron Fiddle logs out these debug logs:
+  // React Native Fiddle logs out these debug logs:
   // > - fiddle:
-  // >     - source: /private/var/folders/0m/nf10bfxx6rgft8tn29fznymc0000gn/T/electron-fiddle-92608-0MCpHD4jYdhV
+  // >     - source: /private/var/folders/0m/nf10bfxx6rgft8tn29fznymc0000gn/T/react-native-fiddle-92608-0MCpHD4jYdhV
   // >     - local copy: /Users/jamie/Library/Caches/fiddle-core/fiddles/102ca20d3c7d06bb3f74202afcaf2bb1
   // They come from: node_modules/@electron/fiddle-core/dist/runner.js
   //
@@ -490,7 +490,7 @@ async function symlinkNodeModules({
 }
 
 /**
- * Stop a currently running Electron fiddle.
+ * Stop a currently running React Native fiddle.
  */
 export async function stopFiddle(
   webContents: WebContents,

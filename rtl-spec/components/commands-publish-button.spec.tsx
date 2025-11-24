@@ -41,7 +41,7 @@ type GistCreateOpts = {
 };
 
 describe('Action button component', () => {
-  const description = 'Electron Fiddle Gist';
+  const description = 'React Native Fiddle Gist';
   const errorMessage = '💀';
   let app: App;
   let mocktokit: OctokitMock;

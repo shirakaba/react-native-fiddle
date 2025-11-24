@@ -35,7 +35,7 @@ describe('ElectronTypes', () => {
 
   beforeEach(async () => {
     tmpdir = tmp.dirSync({
-      template: 'electron-fiddle-typedefs-XXXXXX',
+      template: 'react-native-fiddle-typedefs-XXXXXX',
       unsafeCleanup: true,
     });
 

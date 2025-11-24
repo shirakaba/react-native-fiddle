@@ -52,7 +52,7 @@ export class StateMock {
   public showObsoleteVersions = false;
   public showUndownloadedVersions = false;
   public theme: string | null = null;
-  public title = 'Electron Fiddle';
+  public title = 'React Native Fiddle';
   public version: string | null = null;
   public versions: Record<string, RunnableVersion> = {};
   public versionsToShow: RunnableVersion[] = [];

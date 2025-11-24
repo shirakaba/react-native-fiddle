@@ -55,7 +55,7 @@ describe('protocol', () => {
       const handler: SecondInstanceCallback = vi.mocked(app.on).mock
         .calls[1][1];
 
-      handler({}, ['electron-fiddle://gist/hi']);
+      handler({}, ['react-native-fiddle://gist/hi']);
       expect(ipcMainManager.send).toHaveBeenCalledWith(
         IpcEvents.LOAD_GIST_REQUEST,
         [{ id: 'hi' }],
@@ -69,7 +69,7 @@ describe('protocol', () => {
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
 
-      handler({}, 'electron-fiddle://gist/hi');
+      handler({}, 'react-native-fiddle://gist/hi');
       expect(ipcMainManager.send).toHaveBeenCalledWith(
         IpcEvents.LOAD_GIST_REQUEST,
         [{ id: 'hi' }],
@@ -83,7 +83,7 @@ describe('protocol', () => {
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
 
-      handler({}, 'electron-fiddle://gist/username/gistID');
+      handler({}, 'react-native-fiddle://gist/username/gistID');
       expect(ipcMainManager.send).toHaveBeenCalledWith(
         IpcEvents.LOAD_GIST_REQUEST,
         [{ id: 'gistID' }],
@@ -97,15 +97,15 @@ describe('protocol', () => {
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
 
-      handler({}, 'electron-fiddle://noop');
-      handler({}, 'electron-fiddle://gist/noop/noop/null');
+      handler({}, 'react-native-fiddle://noop');
+      handler({}, 'react-native-fiddle://gist/noop/noop/null');
       expect(ipcMainManager.send).toHaveBeenCalledTimes(0);
     });
 
     it('handles a Fiddle url (argv)', () => {
       overridePlatform('win32');
 
-      process.argv = ['electron-fiddle://gist/hi-arg'];
+      process.argv = ['react-native-fiddle://gist/hi-arg'];
 
       listenForProtocolHandler();
 
@@ -122,7 +122,7 @@ describe('protocol', () => {
       listenForProtocolHandler();
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
-      handler({}, 'electron-fiddle://gist/hi-ready');
+      handler({}, 'react-native-fiddle://gist/hi-ready');
 
       expect(ipcMainManager.send).toHaveBeenCalledTimes(0);
       expect(app.once).toHaveBeenCalled();
@@ -139,12 +139,12 @@ describe('protocol', () => {
     });
 
     it('handles an electron path url', () => {
-      // electron-fiddle://electron/{tag}/{path}
+      // react-native-fiddle://electron/{tag}/{path}
       listenForProtocolHandler();
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
 
-      handler({}, 'electron-fiddle://electron/v4.0.0/test/path');
+      handler({}, 'react-native-fiddle://electron/v4.0.0/test/path');
 
       expect(ipcMainManager.send).toHaveBeenCalledWith(
         IpcEvents.LOAD_ELECTRON_EXAMPLE_REQUEST,
@@ -161,7 +161,7 @@ describe('protocol', () => {
       listenForProtocolHandler();
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
-      handler({}, 'electron-fiddle://electron/v4.0.0');
+      handler({}, 'react-native-fiddle://electron/v4.0.0');
 
       expect(ipcMainManager.send).toHaveBeenCalledTimes(0);
     });
@@ -170,7 +170,7 @@ describe('protocol', () => {
       listenForProtocolHandler();
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
-      handler({}, 'electron-fiddle://noop/123');
+      handler({}, 'react-native-fiddle://noop/123');
 
       expect(ipcMainManager.send).toHaveBeenCalledTimes(0);
     });
@@ -179,7 +179,7 @@ describe('protocol', () => {
       listenForProtocolHandler();
 
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
-      handler({}, 'electron-fiddle://');
+      handler({}, 'react-native-fiddle://');
 
       expect(ipcMainManager.send).toHaveBeenCalledTimes(0);
     });
@@ -191,7 +191,7 @@ describe('protocol', () => {
       const mainWindow = await getOrCreateMainWindow();
       const handler: OpenUrlCallback = vi.mocked(app.on).mock.calls[0][1];
 
-      handler({}, 'electron-fiddle://electron/v4.0.0/test/path');
+      handler({}, 'react-native-fiddle://electron/v4.0.0/test/path');
 
       await new Promise(process.nextTick);
       expect(mainWindow.focus).toHaveBeenCalled();

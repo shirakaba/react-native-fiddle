@@ -98,7 +98,7 @@ export const GistActionButton = observer(
     }
 
     private getFiddleDescriptionFromUser(): Promise<string | undefined> {
-      const placeholder = 'Electron Fiddle Gist' as const;
+      const placeholder = 'React Native Fiddle Gist' as const;
       return this.props.appState.showInputDialog({
         defaultInput: placeholder,
         label: 'Please provide a brief description for your Fiddle Gist',

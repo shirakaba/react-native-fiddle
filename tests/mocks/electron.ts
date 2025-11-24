@@ -117,7 +117,7 @@ function CreateWindowStub() {
 
 const app = {
   addRecentDocument: vi.fn(),
-  getName: vi.fn().mockReturnValue('Electron Fiddle'),
+  getName: vi.fn().mockReturnValue('React Native Fiddle'),
   exit: vi.fn(),
   hide: vi.fn(),
   show: vi.fn(),

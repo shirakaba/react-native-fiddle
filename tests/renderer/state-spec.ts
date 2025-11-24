@@ -783,7 +783,7 @@ describe('AppState', () => {
   });
 
   describe('title', () => {
-    const APPNAME = 'Electron Fiddle';
+    const APPNAME = 'React Native Fiddle';
 
     it('defaults to the appname', () => {
       const expected = APPNAME;

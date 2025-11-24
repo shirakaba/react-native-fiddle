@@ -106,7 +106,7 @@ async function logConfig() {
 }
 
 async function exitWithCode(code: number) {
-  console.log(`Electron Fiddle is exiting with code ${code}`);
+  console.log(`React Native Fiddle is exiting with code ${code}`);
   process.exit(code);
 }
 
@@ -172,11 +172,11 @@ export async function processCommandLine(argv: string[]) {
     `
 
 Example calls:
-  $ electron-fiddle bisect 10.0.0 11.2.0 --fiddle /path/to/fiddle
-  $ electron-fiddle bisect 10.0.0 11.2.0 --fiddle /path/to/fiddle --full
-  $ electron-fiddle test --version 11.2.0 --fiddle /path/to/fiddle
-  $ electron-fiddle test --version 11.2.0 --fiddle 8c5fc0c6a5153d49b5a4a56d3ed9da8f
-  $ electron-fiddle test --version 11.2.0 --fiddle https://gist.github.com/ckerr/8c5fc0c6a5153d49b5a4a56d3ed9da8f/
+  $ react-native-fiddle bisect 10.0.0 11.2.0 --fiddle /path/to/fiddle
+  $ react-native-fiddle bisect 10.0.0 11.2.0 --fiddle /path/to/fiddle --full
+  $ react-native-fiddle test --version 11.2.0 --fiddle /path/to/fiddle
+  $ react-native-fiddle test --version 11.2.0 --fiddle 8c5fc0c6a5153d49b5a4a56d3ed9da8f
+  $ react-native-fiddle test --version 11.2.0 --fiddle https://gist.github.com/ckerr/8c5fc0c6a5153d49b5a4a56d3ed9da8f/
 `,
   );
 

@@ -44,7 +44,9 @@ async function prepareTemplate(branch: string): Promise<string> {
       // save it to a tempfile
       const buffer = Buffer.from(await response.arrayBuffer());
       const { tmpNameSync } = await import('tmp');
-      const tempfile = tmpNameSync({ template: 'electron-fiddle-XXXXXX.zip' });
+      const tempfile = tmpNameSync({
+        template: 'react-native-fiddle-XXXXXX.zip',
+      });
       console.log(`Content: ${branch} saving template to "${tempfile}"`);
       await fs.writeFile(tempfile, buffer, { encoding: 'utf8' });
 

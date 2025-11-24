@@ -31,7 +31,7 @@ export class CreditsSettings extends React.Component<
   }
 
   /**
-   * Renders a list of contributors of Electron Fiddle.
+   * Renders a list of contributors of React Native Fiddle.
    */
   public renderContributors(): Array<JSX.Element> {
     const { contributors } = this.state;
@@ -69,9 +69,11 @@ export class CreditsSettings extends React.Component<
       <div>
         <h1>Credits</h1>
         <Callout>
-          Electron Fiddle is, just like Electron, a free open source project
-          welcoming contributors of all genders, cultures, and backgrounds. We
-          would like to thank those who helped to make Electron Fiddle:
+          React Native Fiddle is, just like React Native, a free open source
+          project welcoming contributors of all genders, cultures, and
+          backgrounds. We would like to thank those who helped to make React
+          Native Fiddle and the original Electron Fiddle that it&apos;s forked
+          from:
         </Callout>
         <br />
         <div className="contributors">{this.renderContributors()}</div>

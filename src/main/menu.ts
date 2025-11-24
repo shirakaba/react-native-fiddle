@@ -66,26 +66,34 @@ function getHelpItems(): Array<MenuItemConstructorOptions> {
       type: 'separator',
     },
     {
-      label: 'Open Fiddle Repository...',
+      label: 'Open React Native Fiddle Repository...',
+      click() {
+        shell.openExternal('https://github.com/shirakaba/react-native-fiddle');
+      },
+    },
+    {
+      label: 'Open the original Electron Fiddle Repository...',
       click() {
         shell.openExternal('https://github.com/electron/fiddle');
       },
     },
     {
-      label: 'Open Electron Repository...',
+      label: 'Open the React Native macOS Repository...',
       click() {
-        shell.openExternal('https://github.com/electron/electron');
+        shell.openExternal('https://github.com/microsoft/react-native-macos');
       },
     },
     {
-      label: 'Open Electron Issue Tracker...',
+      label: 'Open the React Native macOS Issue Tracker...',
       click() {
-        shell.openExternal('https://github.com/electron/electron/issues');
+        shell.openExternal(
+          'https://github.com/microsoft/react-native-macos/issues',
+        );
       },
     },
   );
 
-  // on macOS, there's already the About Electron Fiddle menu item
+  // on macOS, there's already the About React Native Fiddle menu item
   // under the first submenu set by the electron-default-menu package
   if (process.platform !== 'darwin') {
     items.push(
@@ -93,7 +101,7 @@ function getHelpItems(): Array<MenuItemConstructorOptions> {
         type: 'separator',
       },
       {
-        label: 'About Electron Fiddle',
+        label: 'About React Native Fiddle',
         click() {
           app.showAboutPanel();
         },

@@ -9,11 +9,11 @@ import { isDevMode } from './utils/devmode';
 import { getOrCreateMainWindow } from './windows';
 import { IpcEvents } from '../ipc-events';
 
-const PROTOCOL = 'electron-fiddle';
+const PROTOCOL = 'react-native-fiddle';
 const squirrelPath = path.resolve(
   path.dirname(process.execPath),
   '..',
-  'electron-fiddle.exe',
+  'react-native-fiddle.exe',
 );
 
 const handlePotentialProtocolLaunch = (url: string) => {
@@ -28,7 +28,7 @@ const handlePotentialProtocolLaunch = (url: string) => {
   const pathParts = parsed.pathname.split('/').slice(1);
 
   switch (parsed.hostname) {
-    // electron-fiddle://gist/blub
+    // react-native-fiddle://gist/blub
     case 'gist':
       if (pathParts.length === 1) {
         // We only have a gist ID
@@ -49,7 +49,7 @@ const handlePotentialProtocolLaunch = (url: string) => {
         return;
       }
       break;
-    // electron-fiddle://electron/{tag}/{path}
+    // react-native-fiddle://electron/{tag}/{path}
     case 'electron':
       if (pathParts.length > 1) {
         // First part is the tag name (e.g. v22.0.0)

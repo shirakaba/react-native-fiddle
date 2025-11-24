@@ -34,7 +34,7 @@ vi.mock('../../src/main/ipc');
 
 describe('menu', () => {
   beforeEach(() => {
-    electron.app.name = 'Electron Fiddle';
+    electron.app.name = 'React Native Fiddle';
     vi.mocked(electron.dialog.showOpenDialog).mockResolvedValue({} as any);
   });
 

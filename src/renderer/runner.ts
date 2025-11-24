@@ -228,7 +228,7 @@ export class Runner {
   }
 
   /**
-   * Stop a currently running Electron fiddle.
+   * Stop a currently running React Native fiddle.
    */
   public stop(): void {
     window.ElectronFiddle.stopFiddle();

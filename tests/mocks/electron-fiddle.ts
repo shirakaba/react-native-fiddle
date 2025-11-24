@@ -47,7 +47,7 @@ export class ElectronFiddleMock {
   public stopFiddle = vi.fn();
   public taskDone = vi.fn();
   public readThemeFile = vi.fn();
-  public themePath = '~/.electron-fiddle/themes';
+  public themePath = '~/.react-native-fiddle/themes';
   public uncacheTypes = vi.fn();
   public unwatchElectronTypes = vi.fn();
 }

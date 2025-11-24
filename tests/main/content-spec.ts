@@ -67,7 +67,7 @@ describe('content', () => {
         if (!fakeUserData) {
           tmp.setGracefulCleanup();
           fakeUserData = tmp.dirSync({
-            template: 'electron-fiddle-tests--user-data-XXXXXX',
+            template: 'react-native-fiddle-tests--user-data-XXXXXX',
             unsafeCleanup: true, // remove everything
           });
         }

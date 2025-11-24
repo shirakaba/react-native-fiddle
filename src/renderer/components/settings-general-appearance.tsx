@@ -140,7 +140,7 @@ export const AppearanceSettings = observer(
     }
 
     /**
-     * Creates the themes folder in .electron-fiddle if one does not
+     * Creates the themes folder in .react-native-fiddle if one does not
      * exist yet, then shows that folder in the Finder/Explorer.
      */
     public async openThemeFolder(): Promise<boolean> {

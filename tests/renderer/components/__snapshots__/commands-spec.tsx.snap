@@ -41,7 +41,7 @@ exports[`Commands component > renders when system is darwin 1`] = `
   <div
     className="title"
   >
-    Electron Fiddle
+    React Native Fiddle
   </div>
   <div>
     <address-bar

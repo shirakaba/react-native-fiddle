@@ -250,8 +250,8 @@ export const ExecutionSettings = observer(
         <div>
           <h1>Execution</h1>
           <Callout>
-            These advanced settings control how Electron Fiddle executes your
-            fiddles.
+            These advanced settings control how React Native Fiddle executes
+            your fiddles.
           </Callout>
           <br />
           <Callout>
