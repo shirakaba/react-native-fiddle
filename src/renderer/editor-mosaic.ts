@@ -9,7 +9,7 @@ import {
   isSupportedFile,
   monacoLanguage,
 } from './utils/editor-utils';
-import { EditorId, EditorValues, PACKAGE_NAME } from '../interfaces';
+import { EditorId, EditorValues, MAIN_JS, PACKAGE_NAME } from '../interfaces';
 
 export type Editor = MonacoType.editor.IStandaloneCodeEditor;
 
@@ -180,8 +180,13 @@ export class EditorMosaic {
       this.observeEdits(editor);
     }
 
-    // only show the file if it has nontrivial content
-    if (value.length && value !== getEmptyContent(id)) {
+    if (
+      // 1) Only show the file if it has nontrivial content.
+      value.length &&
+      value !== getEmptyContent(id) &&
+      // 2) Respect the "initially hidden" list.
+      !initiallyHiddenEditors.has(id)
+    ) {
       this.show(id);
     } else {
       this.hide(id);
@@ -455,3 +460,9 @@ export class EditorMosaic {
     });
   }
 }
+
+const initiallyHiddenEditors = new Set<EditorId>([
+  MAIN_JS,
+  'metro.config.js',
+  'reporter.js',
+]);

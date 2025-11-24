@@ -21,9 +21,9 @@ const KNOWN_FILES: string[] = [
   MAIN_CJS,
   MAIN_JS,
   MAIN_MJS,
-  'app.js',
-  'app.jsx',
-  'app.tsx',
+  'App.js',
+  'App.jsx',
+  'App.tsx',
   'renderer.cjs',
   'renderer.js',
   'renderer.mjs',
@@ -48,10 +48,10 @@ export function getEditorTitle(id: EditorId): string {
     case MAIN_MJS:
       return `Entrypoint (${id})`;
 
-    case 'app.js':
-    case 'app.jsx':
-    case 'app.tsx':
-      return `Root component (${id})`;
+    case 'App.js':
+    case 'App.jsx':
+    case 'App.tsx':
+      return `Root UI component (${id})`;
 
     case 'preload.cjs':
     case 'preload.js':
