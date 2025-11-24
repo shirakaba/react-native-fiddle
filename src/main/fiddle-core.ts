@@ -63,10 +63,6 @@ export async function startFiddle(
     version,
   } = params;
 
-  console.log(
-    `[CWD] window.ElectronFiddle.startFiddle() called with params: ${JSON.stringify(params)}`,
-  );
-
   const env = { ...process.env };
 
   if (enableElectronLogging) {
@@ -122,7 +118,7 @@ export async function startFiddle(
   // out above.
   const templateDirLackingNodeModules = dir;
   console.log(
-    `[CWD] window.ElectronFiddle.startFiddle() shall serve from params.dir "${templateDirLackingNodeModules}". params.localPath was: "${params.localPath ?? '<undefined>'}"`,
+    `[CWD] window.ElectronFiddle.startFiddle() shall serve from params.dir "${templateDirLackingNodeModules}".${params.localPath ? ` params.localPath was "${params.localPath}".` : ''}`,
   );
 
   await symlinkNodeModules({

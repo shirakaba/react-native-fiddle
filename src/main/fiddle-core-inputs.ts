@@ -6,13 +6,9 @@ export const TEMPLATE_NOT_YET_LOADED = 'TEMPLATE_NOT_YET_LOADED';
 let currentTemplate = TEMPLATE_NOT_YET_LOADED;
 
 eventEmitter.addListener('add-template', (branch: string, folder: string) => {
-  console.log(
-    `[fiddle-core-inputs] registered quickStartTemplates["${branch}"] = "${folder}".`,
-  );
   quickStartTemplates[branch] = folder;
 });
 eventEmitter.addListener('set-current-template', (branch: string) => {
-  console.log(`[fiddle-core-inputs] setting currentTemplate to "${branch}".`);
   currentTemplate = branch;
 });
 
