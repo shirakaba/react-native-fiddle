@@ -470,6 +470,21 @@ async function symlinkNodeModules({
     templateDirLackingNodeModules,
     'node_modules',
   );
+
+  try {
+    await fsPromises.rm(symlinkPath);
+  } catch (cause) {
+    if (
+      !(cause instanceof Error) ||
+      !('code' in cause) ||
+      cause.code !== 'ENOENT'
+    ) {
+      throw new Error('Unable to remove old symlink', {
+        cause,
+      });
+    }
+  }
+
   try {
     await fsPromises.symlink(nodeModulesTarget, symlinkPath, 'dir');
   } catch (cause) {
