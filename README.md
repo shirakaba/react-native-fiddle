@@ -1,8 +1,8 @@
 # React Native Fiddle
 
-React Native Fiddle lets you create and play with small React Native desktop
+React Native Fiddle lets you create and play with small React Native Desktop
 experiments. It greets you with a quick-start template after opening – change a
-few things, choose the version of React Native desktop you want to run it with,
+few things, choose the version of React Native Desktop you want to run it with,
 and play around. Then, save your Fiddle either as a GitHub Gist or to a local
 folder. Once published on GitHub, anyone can quickly try your Fiddle out by just
 entering it in the address bar.
@@ -26,11 +26,11 @@ yarn start
 
 ## Features
 
-### Explore React Native desktop
+### Explore React Native Desktop
 
-<img width="1493" alt="Screenshot: Electron App running" src="https://user-images.githubusercontent.com/8198408/183112940-370c7535-1d71-40f3-ba8f-fad5f60ed2e9.png">
+<img width="960" alt="Screenshot: React Native Fiddle App running" src=".github/images/fiddle_running_via_gist.png">
 
-Try React Native desktop without installing any dependencies: Fiddle includes
+Try React Native Desktop without installing any dependencies: Fiddle includes
 everything you'll need to explore the platform.
 
 ### Excellent editing
