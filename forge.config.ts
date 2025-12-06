@@ -4,6 +4,7 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 
+import { sourceEnvVars } from './env';
 import packageJson from './package.json';
 import { maybeFetchContributors } from './tools/contributors';
 import { populateReleases } from './tools/fetch-releases';
@@ -97,8 +98,7 @@ const config: ForgeConfig = {
       OriginalFilename: 'React Native Fiddle',
     },
     osxSign: {
-      identity:
-        'Developer ID Application: OpenJS Foundation, Inc. (UY52UFTVTM)',
+      identity: 'Developer ID Application: JAMES JOSHUA BIRCH (JM4MB83A5L)',
       optionsForFile: (filePath) =>
         ['(Plugin).app', '(GPU).app', '(Renderer).app'].some((helper) =>
           filePath.includes(helper),
@@ -169,6 +169,9 @@ const config: ForgeConfig = {
 };
 
 function notarizeMaybe() {
+  // JB: Adding so that I can notarise locally using env vars in .env.
+  sourceEnvVars();
+
   if (process.platform !== 'darwin') {
     return;
   }
