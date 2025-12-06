@@ -94,7 +94,7 @@ async function logConfig() {
     getos((err, result) => resolve(err || result)),
   );
 
-  console.log(`${packageJson.name} started
+  console.log(`react-native-fiddle started
    argv: ${JSON.stringify(process.argv)}
    date: ${new Date()}
    fiddle.version: ${packageJson.version}

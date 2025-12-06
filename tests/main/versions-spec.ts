@@ -17,9 +17,11 @@ describe('versions', () => {
     knownVersions = await setupVersions();
   });
 
-  describe('getOldestSupportedMajor()', () => {
+  // JB: We have a different version history to Electron, and React Native is
+  //     perpetually on version 0.
+  describe.skip('getOldestSupportedMajor()', () => {
     function getExpectedOldestSupportedVersion() {
-      const NUM_BRANCHES = parseInt(process.env.NUM_STABLE_BRANCHES || '') || 3;
+      const NUM_BRANCHES = parseInt(process.env.NUM_STABLE_BRANCHES || '') || 0;
       return getLatestStable()!.major + 1 - NUM_BRANCHES;
     }
 
@@ -37,7 +39,7 @@ describe('versions', () => {
 
   describe('isReleasedMajor()', () => {
     it('returns true for recognized releases', () => {
-      expect(isReleasedMajor(3)).toBe(true);
+      expect(isReleasedMajor(0)).toBe(true);
     });
 
     it('returns false for unrecognized releases', () => {

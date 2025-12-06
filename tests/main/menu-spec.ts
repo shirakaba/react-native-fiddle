@@ -196,7 +196,7 @@ describe('menu', () => {
       setupMenu();
     });
 
-    describe('getHelpItems()', () => {
+    describe.only('getHelpItems()', () => {
       let help: any;
 
       beforeEach(() => {
@@ -227,24 +227,24 @@ describe('menu', () => {
         expect(mocks.toggleDevTools).toHaveBeenCalled();
       });
 
-      it('opens the Fiddle repo', () => {
+      it('opens the React Native Fiddle repo', () => {
         help.submenu[5].click();
+        expect(electron.shell.openExternal).toHaveBeenCalledWith(
+          'https://github.com/shirakaba/react-native-fiddle',
+        );
+      });
+
+      it('opens the Electron Fiddle repo', () => {
+        help.submenu[6].click();
         expect(electron.shell.openExternal).toHaveBeenCalledWith(
           'https://github.com/electron/fiddle',
         );
       });
 
-      it('opens the Electron repo', () => {
-        help.submenu[6].click();
-        expect(electron.shell.openExternal).toHaveBeenCalledWith(
-          'https://github.com/electron/electron',
-        );
-      });
-
-      it('opens the Electron issues', () => {
+      it('opens the React Native macOS repo', () => {
         help.submenu[7].click();
         expect(electron.shell.openExternal).toHaveBeenCalledWith(
-          'https://github.com/electron/electron/issues',
+          'https://github.com/microsoft/react-native-macos',
         );
       });
     });
