@@ -189,7 +189,7 @@ function notarizeMaybe() {
   config.packagerConfig!.osxNotarize = {
     appleId: process.env.APPLE_ID,
     appleIdPassword: process.env.APPLE_ID_PASSWORD,
-    teamId: 'UY52UFTVTM',
+    teamId: 'JM4MB83A5L',
   };
 }
 
