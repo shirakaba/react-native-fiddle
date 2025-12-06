@@ -15,19 +15,19 @@ jobs:
       matrix:
         os:
           - macos-15-intel
-          - ubuntu-latest
-          - windows-latest
+          # - ubuntu-latest
+          # - windows-latest
         arch:
           - x64
         include:
           - os: macos-latest
             arch: arm64
-          - os: ubuntu-24.04-arm
-            arch: armv7l
-          - os: ubuntu-24.04-arm
-            arch: arm64
-          - os: windows-latest
-            arch: ia32
+          # - os: ubuntu-24.04-arm
+          #   arch: armv7l
+          # - os: ubuntu-24.04-arm
+          #   arch: arm64
+          # - os: windows-latest
+          #   arch: ia32
     runs-on: "${{ matrix.os }}"
     permissions:
       actions: write
