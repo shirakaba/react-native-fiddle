@@ -162,8 +162,8 @@ jobs:
       - uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3.5.0
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: electronjs
-          SENTRY_PROJECT: electron-fiddle
+          SENTRY_ORG: shirakaba
+          SENTRY_PROJECT: react-native-fiddle
         with:
           environment: production
           release: React-Native-Fiddle@${{ github.ref_name }}
