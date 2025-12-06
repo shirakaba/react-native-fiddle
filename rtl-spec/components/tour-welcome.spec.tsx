@@ -60,7 +60,8 @@ describe('Header component', () => {
   });
 
   describe('getWelcomeTour()', () => {
-    it('offers custom buttons for the Electron step', async () => {
+    // JB: I've removed the "introduce to the basics" tour for React Native.
+    it.skip('offers custom buttons for the Electron step', async () => {
       const tourSteps = [...getWelcomeTour()];
       const electronStep = tourSteps.find(
         ({ name }) => name === 'first-time-electron',

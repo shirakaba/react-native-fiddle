@@ -97,13 +97,7 @@ describe('Editors component', () => {
     const editors = Object.keys(editorValues);
     expect(editors).not.toHaveLength(0);
 
-    const toolbarTitles = [
-      'Main Process (main.js)',
-      'Renderer Process (renderer.js)',
-      'HTML (index.html)',
-      'Preload (preload.js)',
-      'Stylesheet (styles.css)',
-    ];
+    const toolbarTitles = ['Root UI component (App.js)'];
 
     for (const toolbarTitle of toolbarTitles) {
       const el = toolbars.find((toolbar) =>
