@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EditorId, EditorValues, MAIN_JS } from '../../src/interfaces';
+import {
+  EditorId,
+  EditorValues,
+  MAIN_JS,
+  ROOT_UI_COMPONENT_JS,
+} from '../../src/interfaces';
 import {
   Editor,
   EditorMosaic,
@@ -33,7 +38,7 @@ describe('EditorMosaic', () => {
   });
 
   describe('addEditor()', () => {
-    const id = MAIN_JS;
+    const id = ROOT_UI_COMPONENT_JS;
     const content = '// content';
 
     beforeEach(async () => {
@@ -82,7 +87,7 @@ describe('EditorMosaic', () => {
   });
 
   describe('numVisible', () => {
-    const id = MAIN_JS;
+    const id = ROOT_UI_COMPONENT_JS;
     const hiddenContent = getEmptyContent(id);
     const visibleContent = '// fnord' as const;
 
@@ -130,7 +135,7 @@ describe('EditorMosaic', () => {
   });
 
   describe('toggle()', () => {
-    const id = MAIN_JS;
+    const id = ROOT_UI_COMPONENT_JS;
     const hiddenContent = getEmptyContent(id);
     const visibleContent = '// sesquipedalian';
 
@@ -223,7 +228,7 @@ describe('EditorMosaic', () => {
       await editorMosaic.set(createEditorValues());
       await editorMosaic.markAsSaved();
       expect(editorMosaic.isEdited).toBe(false);
-      await editorMosaic.renameFile('renderer.js', 'bar.js');
+      await editorMosaic.renameFile(ROOT_UI_COMPONENT_JS, 'bar.js');
       expect(editorMosaic.isEdited).toBe(true);
     });
   });
@@ -233,7 +238,7 @@ describe('EditorMosaic', () => {
       await editorMosaic.set(createEditorValues());
       await editorMosaic.markAsSaved();
       expect(editorMosaic.isEdited).toBe(false);
-      await editorMosaic.remove('renderer.js');
+      await editorMosaic.remove(ROOT_UI_COMPONENT_JS);
       expect(editorMosaic.isEdited).toBe(true);
     });
   });
@@ -264,7 +269,7 @@ describe('EditorMosaic', () => {
     });
 
     it('shows files that have non-default content', async () => {
-      const id = MAIN_JS;
+      const id = ROOT_UI_COMPONENT_JS;
       const content = 'fnord';
       await editorMosaic.set({ [id]: content });
       expect(editorMosaic.files.get(id)).not.toBe(EditorPresence.Hidden);
@@ -327,17 +332,22 @@ describe('EditorMosaic', () => {
           }
         }
 
-        // now replace with one visible file and one hidden file
+        // now replace with one hidden file and one visible file
         const keys = Object.keys(valuesIn);
-        const [id1, id2] = keys;
-        const values = { [id1]: '// potrzebie', [id2]: '' };
+        const [mainJs, rootUiComponentJs] = keys;
+        const values = {
+          [mainJs]: '',
+          [rootUiComponentJs]: '// potrzebie',
+        };
         await editorMosaic.set(values);
 
-        // test that id1 got recycled but id2 is hidden
+        // test that rootUiComponentJs got recycled but mainJS remains hidden
         const { files } = editorMosaic;
         expect(files.size).toBe(2);
-        expect(files.get(id1 as EditorId)).toBe(EditorPresence.Visible);
-        expect(files.get(id2 as EditorId)).toBe(EditorPresence.Hidden);
+        expect(files.get(mainJs as EditorId)).toBe(EditorPresence.Hidden);
+        expect(files.get(rootUiComponentJs as EditorId)).toBe(
+          EditorPresence.Visible,
+        );
       });
     });
 
@@ -349,7 +359,7 @@ describe('EditorMosaic', () => {
     });
 
     describe('does not remember files from previous calls', () => {
-      const id = MAIN_JS;
+      const id = ROOT_UI_COMPONENT_JS;
 
       afterEach(async () => {
         // this is the real test.
@@ -381,28 +391,14 @@ describe('EditorMosaic', () => {
 
     it('uses the expected layout', async () => {
       await editorMosaic.set(valuesIn);
-      expect(editorMosaic.mosaic).toStrictEqual({
-        direction: 'row',
-        first: {
-          direction: 'column',
-          first: MAIN_JS,
-          second: 'renderer.js',
-        },
-        second: {
-          direction: 'column',
-          first: 'index.html',
-          second: {
-            direction: 'column',
-            first: 'preload.js',
-            second: 'styles.css',
-          },
-        },
-      });
+
+      // JB: We hide all boring files, so it's just App.js.
+      expect(editorMosaic.mosaic).toStrictEqual(ROOT_UI_COMPONENT_JS);
     });
   });
 
   describe('value()', () => {
-    const id = MAIN_JS;
+    const id = ROOT_UI_COMPONENT_JS;
     const content = '// content';
     const emptyContent = getEmptyContent(id);
 

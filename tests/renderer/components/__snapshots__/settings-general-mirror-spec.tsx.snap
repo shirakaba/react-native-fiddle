@@ -28,12 +28,12 @@ exports[`MirrorSettings component > renders 1`] = `
     <Blueprint3.InputGroup
       disabled={true}
       onChange={[Function]}
-      value="https://github.com/electron/electron/releases/download/"
+      value="https://github.com/shirakaba/rnmprebuilds/releases/download/"
     />
     <Blueprint3.InputGroup
       disabled={true}
       onChange={[Function]}
-      value="https://github.com/electron/nightlies/releases/download/"
+      value="https://github.com/shirakaba/rnmprebuilds/releases/download/"
     />
   </Blueprint3.Callout>
 </div>

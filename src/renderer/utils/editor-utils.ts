@@ -1,4 +1,12 @@
-import { EditorId, MAIN_CJS, MAIN_JS, MAIN_MJS } from '../../interfaces';
+import {
+  EditorId,
+  MAIN_CJS,
+  MAIN_JS,
+  MAIN_MJS,
+  ROOT_UI_COMPONENT_JS,
+  ROOT_UI_COMPONENT_JSX,
+  ROOT_UI_COMPONENT_TSX,
+} from '../../interfaces';
 import {
   ensureRequiredFiles,
   getEmptyContent,
@@ -21,9 +29,11 @@ const KNOWN_FILES: string[] = [
   MAIN_CJS,
   MAIN_JS,
   MAIN_MJS,
-  'App.js',
-  'App.jsx',
-  'App.tsx',
+  ROOT_UI_COMPONENT_JS,
+  ROOT_UI_COMPONENT_JSX,
+  ROOT_UI_COMPONENT_TSX,
+  'metro.config.js',
+  'reporter.js',
   'renderer.cjs',
   'renderer.js',
   'renderer.mjs',
@@ -48,9 +58,9 @@ export function getEditorTitle(id: EditorId): string {
     case MAIN_MJS:
       return `Entrypoint (${id})`;
 
-    case 'App.js':
-    case 'App.jsx':
-    case 'App.tsx':
+    case ROOT_UI_COMPONENT_JS:
+    case ROOT_UI_COMPONENT_JSX:
+    case ROOT_UI_COMPONENT_TSX:
       return `Root UI component (${id})`;
 
     case 'preload.cjs':

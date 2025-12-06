@@ -31,13 +31,11 @@ describe('get-package', () => {
     const defaultPackage = {
       name: defaultName,
       productName: defaultName,
-      description: 'My Electron application description',
-      keywords: [],
-      main: `./${MAIN_JS}`,
+      description: 'A minimal React Native application',
       version: '1.0.0',
       author: defaultAuthor,
       scripts: {
-        start: 'electron .',
+        start: 'rnx-cli start --custom-log-reporter-path ./reporter.js',
       },
       dependencies: {
         say: '*',
@@ -64,7 +62,8 @@ describe('get-package', () => {
       expect(result).toEqual(buildExpectedPackage());
     });
 
-    it('can use an ESM entry point', async () => {
+    // JB: I don't intend to support users modifying the entrypoint.
+    it.skip('can use an ESM entry point', async () => {
       const name = defaultName;
       const appState = {
         editorMosaic: {
@@ -82,8 +81,12 @@ describe('get-package', () => {
     });
 
     it.each([
-      ['can include electron', '13.0.0', 'electron'],
-      ['can include electron-nightly', '13.0.0-nightly.12', 'electron-nightly'],
+      ['can include electron', '13.0.0', 'react-native-macos'],
+      [
+        'can include electron-nightly',
+        '13.0.0-nightly.12',
+        'react-native-macos',
+      ],
     ])('%s', async (_, version: string, electronPkg: string) => {
       const name = defaultName;
       appState.getName.mockReturnValue(name);
@@ -92,8 +95,20 @@ describe('get-package', () => {
       appState.packageAuthor = defaultAuthor;
 
       const result = await getPackageJson(appState as unknown as AppState);
-      const devDependencies = { [electronPkg]: version };
-      expect(result).toEqual(buildExpectedPackage({ name, devDependencies }));
+      let expectedPackage = buildExpectedPackage({ name });
+      const expectedPackageParsed = JSON.parse(expectedPackage);
+      expectedPackage = JSON.stringify(
+        {
+          ...expectedPackageParsed,
+          dependencies: {
+            [electronPkg]: version,
+            ...expectedPackageParsed.dependencies,
+          },
+        },
+        null,
+        2,
+      );
+      expect(result).toEqual(expectedPackage);
     });
   });
 });

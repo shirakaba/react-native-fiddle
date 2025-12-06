@@ -159,6 +159,10 @@ export const MAIN_CJS = 'index.cjs';
 export const MAIN_JS = 'index.js';
 export const MAIN_MJS = 'index.mjs';
 
+export const ROOT_UI_COMPONENT_JS = 'App.js';
+export const ROOT_UI_COMPONENT_JSX = 'App.jsx';
+export const ROOT_UI_COMPONENT_TSX = 'App.tsx';
+
 export const PACKAGE_NAME = 'package.json';
 
 export type ArrowPosition = 'top' | 'left' | 'bottom' | 'right';

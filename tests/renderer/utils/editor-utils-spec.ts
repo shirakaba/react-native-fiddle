@@ -17,7 +17,7 @@ describe('editor-utils', () => {
         expect(isKnownFile(id));
         expect(isSupportedFile(id));
 
-        expect(getEditorTitle(id)).toBe(`Main Process (${id})`);
+        expect(getEditorTitle(id)).toBe(`Entrypoint (${id})`);
       }
     });
     it('recognizes supported files', () => {
