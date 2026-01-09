@@ -319,8 +319,8 @@ export const ExecutionSettings = observer(
           <Callout>
             <FormGroup>
               <span style={{ marginRight: 4 }}>
-                Electron Fiddle will install packages if you specify them. It
-                uses{' '}
+                React Native Fiddle will install packages if you specify them.
+                It uses{' '}
                 <a
                   href="https://www.npmjs.com/"
                   target="_blank"
@@ -336,7 +336,11 @@ export const ExecutionSettings = observer(
                 >
                   Yarn
                 </a>{' '}
-                is also available.
+                and{' '}
+                <a href="https://bun.com" target="_blank" rel="noreferrer">
+                  Bun
+                </a>{' '}
+                are also available. We recommend Bun for the fastest installs.
               </span>
               <RadioGroup
                 onChange={this.handlePMChange}
@@ -345,6 +349,7 @@ export const ExecutionSettings = observer(
               >
                 <Radio label="npm" value="npm" />
                 <Radio label="yarn" value="yarn" />
+                <Radio label="bun" value="bun" />
               </RadioGroup>
             </FormGroup>
           </Callout>

@@ -9,6 +9,7 @@ import { IpcEvents } from '../ipc-events';
 
 let isNpmInstalled: boolean | null = null;
 let isYarnInstalled: boolean | null = null;
+let isBunInstalled: boolean | null = null;
 
 /**
  * Checks if package manager is installed by checking if a binary
@@ -22,6 +23,8 @@ export async function getIsPackageManagerInstalled(
     return isNpmInstalled;
   if (packageManager === 'yarn' && isYarnInstalled !== null && !ignoreCache)
     return isYarnInstalled;
+  if (packageManager === 'bun' && isBunInstalled !== null && !ignoreCache)
+    return isBunInstalled;
 
   const command =
     process.platform === 'win32'
@@ -32,6 +35,8 @@ export async function getIsPackageManagerInstalled(
     await exec(process.cwd(), command);
     if (packageManager === 'npm') {
       isNpmInstalled = true;
+    } else if (packageManager === 'bun') {
+      isBunInstalled = true;
     } else {
       isYarnInstalled = true;
     }
@@ -40,6 +45,8 @@ export async function getIsPackageManagerInstalled(
     console.warn(`getIsPackageManagerInstalled: "${command}" failed.`, error);
     if (packageManager === 'npm') {
       isNpmInstalled = false;
+    } else if (packageManager === 'bun') {
+      isBunInstalled = false;
     } else {
       isYarnInstalled = false;
     }
@@ -61,7 +68,8 @@ export async function addModules(
     installCommand = 'npm install';
     nameArgs = names.length > 0 ? ['-S', ...names] : ['--also=dev --prod'];
   } else {
-    installCommand = names.length > 0 ? 'yarn add' : 'yarn install';
+    installCommand =
+      names.length > 0 ? `${packageManager} add` : `${packageManager} install`;
     nameArgs = [...names];
   }
 

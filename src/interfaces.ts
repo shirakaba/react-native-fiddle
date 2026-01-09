@@ -215,7 +215,7 @@ export interface MessageOptions {
   buttons?: string[];
 }
 
-export type IPackageManager = 'npm' | 'yarn';
+export type IPackageManager = 'npm' | 'yarn' | 'bun';
 
 export interface PMOperationOptions {
   dir: string;

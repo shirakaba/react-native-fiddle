@@ -64,6 +64,59 @@ describe('npm', () => {
       });
     });
 
+    describe('bun()', () => {
+      beforeEach(() => {
+        vi.resetModules();
+      });
+
+      afterEach(() => resetPlatform());
+
+      it('returns true if bun installed', async () => {
+        overridePlatform('darwin');
+
+        vi.mocked(exec).mockResolvedValueOnce('/usr/bin/fake-bun');
+
+        const result = await getIsPackageManagerInstalled('bun');
+
+        expect(result).toBe(true);
+        expect(exec).toBeCalledWith(expect.anything(), 'which bun');
+      });
+
+      it('returns true if bun installed', async () => {
+        overridePlatform('win32');
+
+        vi.mocked(exec).mockResolvedValueOnce('/usr/bin/fake-bun');
+
+        const result = await getIsPackageManagerInstalled('bun', true);
+
+        expect(result).toBe(true);
+        expect(exec).toBeCalledWith(expect.anything(), 'where.exe bun');
+      });
+
+      it('returns false if bun not installed', async () => {
+        overridePlatform('darwin');
+
+        vi.mocked(exec).mockRejectedValueOnce('/usr/bin/fake-bun');
+
+        const result = await getIsPackageManagerInstalled('bun', true);
+
+        expect(result).toBe(false);
+        expect(exec).toBeCalledWith(expect.anything(), 'which bun');
+      });
+
+      it('uses the cache', async () => {
+        vi.mocked(exec).mockResolvedValueOnce('/usr/bin/fake-bun');
+
+        const one = await getIsPackageManagerInstalled('bun', true);
+        expect(one).toBe(true);
+        expect(exec).toHaveBeenCalledTimes(1);
+
+        const two = await getIsPackageManagerInstalled('bun');
+        expect(two).toBe(true);
+        expect(exec).toHaveBeenCalledTimes(1);
+      });
+    });
+
     describe('yarn()', () => {
       beforeEach(() => {
         vi.resetModules();
@@ -143,6 +196,24 @@ describe('npm', () => {
       });
     });
 
+    describe('bun', () => {
+      it('attempts to install a single module', async () => {
+        addModules(
+          { dir: '/my/directory', packageManager: 'bun' },
+          'say',
+          'thing',
+        );
+
+        expect(exec).toHaveBeenCalledWith('/my/directory', 'bun add say thing');
+      });
+
+      it('attempts to installs all modules', async () => {
+        addModules({ dir: '/my/directory', packageManager: 'bun' });
+
+        expect(exec).toHaveBeenCalledWith('/my/directory', 'bun install');
+      });
+    });
+
     describe('yarn', () => {
       it('attempts to install a single module', async () => {
         addModules(
@@ -170,6 +241,12 @@ describe('npm', () => {
       packageRun({ dir: '/my/directory', packageManager: 'npm' }, 'package');
 
       expect(exec).toHaveBeenCalledWith('/my/directory', 'npm run package');
+    });
+
+    it('attempts to run a command via bun', async () => {
+      packageRun({ dir: '/my/directory', packageManager: 'bun' }, 'package');
+
+      expect(exec).toHaveBeenCalledWith('/my/directory', 'bun run package');
     });
 
     it('attempts to run a command via yarn', async () => {
