@@ -12,7 +12,9 @@ import { ensureRequiredFiles, isSupportedFile } from '../../utils/editor-utils';
  */
 export async function readFiddle(
   folder: string,
-  includePackageJson = false,
+  // JB: modified to `true`
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  includePackageJson = true,
 ): Promise<EditorValues> {
   let got: EditorValues = {};
 

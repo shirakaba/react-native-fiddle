@@ -121,7 +121,8 @@ function getQuickStart(branch: string): Promise<EditorValues> {
     console.log(`Content: ${branch} template loading`);
     pending = prepareTemplate(branch).then((folder) => {
       eventEmitter.emit('add-template', branch, folder);
-      return readFiddle(folder);
+      // JB: modified to `includePackageJson: true`
+      return readFiddle(folder, true);
     });
     templateCache[branch] = pending;
   }
@@ -144,7 +145,8 @@ export function getTemplate(version: string): Promise<EditorValues> {
   const major = Number.parseInt(version);
   return isReleasedMajor(major)
     ? getQuickStart(`${major}-x-y`)
-    : readFiddle(STATIC_TEMPLATE_DIR);
+    : // JB: modified to `includePackageJson: true`
+      readFiddle(STATIC_TEMPLATE_DIR, true);
 }
 
 export async function setupContent() {

@@ -8,12 +8,9 @@ import { Runner } from './runner';
 import { AppState } from './state';
 import { TaskRunner } from './task-runner';
 import { activateTheme, getCurrentTheme, getTheme } from './themes';
-import { getPackageJson } from './utils/get-package';
 import { getElectronVersions } from './versions';
 import {
-  EditorId,
   EditorValues,
-  PACKAGE_NAME,
   PackageJsonOptions,
   SetFiddleOptions,
 } from '../interfaces';
@@ -95,16 +92,18 @@ export class App {
    * Retrieves the contents of all editor panes.
    */
   public async getEditorValues(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: PackageJsonOptions,
   ): Promise<EditorValues> {
     const values = this.state.editorMosaic.values();
 
-    if (options) {
-      values[PACKAGE_NAME as EditorId] = await getPackageJson(
-        this.state,
-        options,
-      );
-    }
+    // JB: We now return the template package.json as-is
+    // if (options) {
+    //   values[PACKAGE_NAME as EditorId] = await getPackageJson(
+    //     this.state,
+    //     options,
+    //   );
+    // }
 
     return values;
   }

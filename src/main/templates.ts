@@ -14,7 +14,8 @@ import { IpcEvents } from '../ipc-events';
 export function getTemplateValues(name: string): Promise<EditorValues> {
   const templatePath = path.join(STATIC_DIR, 'show-me', name.toLowerCase());
 
-  return readFiddle(templatePath);
+  // JB: modified to `includePackageJson: true`
+  return readFiddle(templatePath, true);
 }
 
 export function setupTemplates() {
