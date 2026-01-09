@@ -381,6 +381,14 @@ export class Runner {
     };
 
     return new Promise(async (resolve, _reject) => {
+      window.ElectronFiddle.removeAllListeners('fiddle-runner-output');
+      window.ElectronFiddle.addEventListener(
+        'fiddle-runner-output',
+        (output: string) => {
+          pushOutput(output, { bypassBuffer: false });
+        },
+      );
+
       try {
         await window.ElectronFiddle.startFiddle({
           ...params,
@@ -398,16 +406,7 @@ export class Runner {
 
       pushOutput(`Electron v${version} started.`);
 
-      window.ElectronFiddle.removeAllListeners('fiddle-runner-output');
       window.ElectronFiddle.removeAllListeners('fiddle-stopped');
-
-      window.ElectronFiddle.addEventListener(
-        'fiddle-runner-output',
-        (output: string) => {
-          pushOutput(output, { bypassBuffer: false });
-        },
-      );
-
       window.ElectronFiddle.addEventListener(
         'fiddle-stopped',
         async (hostApp, RNCLI) => {
