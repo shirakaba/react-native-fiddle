@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { IpcMainInvokeEvent, WebContents, shell } from 'electron';
 
 import { ipcMainManager } from './ipc';
-import { exec } from './utils/exec';
+import { exec, spawn } from './utils/exec';
 import { IPackageManager, PMOperationOptions } from '../interfaces';
 import { IpcEvents } from '../ipc-events';
 
@@ -78,19 +78,52 @@ export async function addModules(
   { dir, packageManager }: PMOperationOptions,
   ...names: Array<string>
 ): Promise<string> {
-  let nameArgs: Array<string> = [];
-  let installCommand: string;
+  const { command, args } = addModulesPrelude(packageManager, ...names);
+
+  return exec(dir, [command].concat(args).join(' '));
+}
+
+export async function addModulesWithFeedback(
+  {
+    dir,
+    packageManager,
+    onStdOutLine,
+    onStdErrLine,
+  }: PMOperationOptions & {
+    onStdOutLine?: (line: string) => void;
+    onStdErrLine?: (line: string) => void;
+  },
+  ...names: Array<string>
+) {
+  const { command, args } = addModulesPrelude(packageManager, ...names);
+
+  return spawn({
+    command,
+    args,
+    cwd: dir,
+    onStdOutLine,
+    onStdErrLine,
+  });
+}
+
+function addModulesPrelude(packageManager: string, ...names: Array<string>) {
+  let command: string;
+  const args = new Array<string>();
 
   if (packageManager === 'npm') {
-    installCommand = 'npm install';
-    nameArgs = names.length > 0 ? ['-S', ...names] : ['--also=dev --prod'];
+    command = 'npm';
+    args.push('install');
+    if (names.length > 0) {
+      args.push('-S', ...names);
+    } else {
+      args.push('--also=dev', '--prod');
+    }
   } else {
-    installCommand =
-      names.length > 0 ? `${packageManager} add` : `${packageManager} install`;
-    nameArgs = [...names];
+    command = packageManager;
+    args.push(names.length > 0 ? 'add' : 'install', ...names);
   }
 
-  return exec(dir, [installCommand].concat(nameArgs).join(' '));
+  return { command, args };
 }
 
 /**

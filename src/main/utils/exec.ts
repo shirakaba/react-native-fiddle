@@ -1,4 +1,5 @@
-import { exec as cp_exec } from 'node:child_process';
+import { exec as cp_exec, spawn as cp_spawn } from 'node:child_process';
+import * as readline from 'node:readline';
 import { promisify } from 'node:util';
 
 import shellEnv from 'shell-env';
@@ -88,4 +89,59 @@ export async function exec(dir: string, cliArgs: string): Promise<string> {
   });
 
   return stdout.trim();
+}
+
+/**
+ * Execute a command in a directory with spawn.
+ */
+export async function spawn({
+  command,
+  args,
+  cwd,
+  onStdOutLine,
+  onStdErrLine,
+}: {
+  command: string;
+  args: readonly string[];
+  cwd: string;
+  onStdOutLine?: (line: string) => void;
+  onStdErrLine?: (line: string) => void;
+}): Promise<void> {
+  await maybeFixPath();
+
+  const cp = cp_spawn(command, args, { cwd });
+
+  return new Promise<void>((resolve, reject) => {
+    if (onStdOutLine) {
+      const rl = readline.createInterface({ input: cp.stdout });
+      rl.on('line', onStdOutLine);
+    }
+    if (onStdErrLine) {
+      const rl = readline.createInterface({ input: cp.stderr });
+      rl.on('line', onStdErrLine);
+    }
+
+    let error: Error | null = null;
+    cp.on('error', (e) => {
+      error = e;
+    });
+
+    cp.on('close', (code, signal) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      if (code !== 0) {
+        reject(
+          new Error(
+            `Child process exited with code ${code} and signal ${signal}`,
+          ),
+        );
+        return;
+      }
+
+      resolve();
+    });
+  });
 }

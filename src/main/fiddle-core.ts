@@ -18,6 +18,7 @@ import {
 import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
 import { eventEmitter, getCurrentTemplateDir } from './fiddle-core-inputs';
 import { ipcMainManager } from './ipc';
+import { addModulesWithFeedback, getPreferredPackageManager } from './npm';
 import { treeKill } from './tree-kill';
 import { normaliseMaybeDevtronValue } from './utils/devtron';
 import {
@@ -121,9 +122,11 @@ export async function startFiddle(
     `[CWD] window.ElectronFiddle.startFiddle() shall serve from params.dir "${templateDirLackingNodeModules}".${params.localPath ? ` params.localPath was "${params.localPath}".` : ''}`,
   );
 
-  await copyNodeModulesFromTemplate({
+  await installNodeModulesForTemplate({
     templateDirContainingRealNodeModules,
     templateDirLackingNodeModules,
+    pushOutput,
+    webContents,
   });
 
   // We avoid launching the host app until the RNCLI dev server has started
@@ -429,9 +432,11 @@ function restartRNCLI({
      * We have a node_modules folder in our original template, but manually
      * saved templates omit it for some reason, so we'll copy them over.
      */
-    await copyNodeModulesFromTemplate({
+    await installNodeModulesForTemplate({
       templateDirContainingRealNodeModules,
       templateDirLackingNodeModules: dirname,
+      pushOutput,
+      webContents,
     });
 
     restartRNCLI({
@@ -450,29 +455,33 @@ function restartRNCLI({
  * templates omit it for some reason, so we'll copy them over (which will be
  * faster than an `npm install`).
  */
-async function copyNodeModulesFromTemplate({
+async function installNodeModulesForTemplate({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   templateDirContainingRealNodeModules,
   templateDirLackingNodeModules,
+  webContents,
+  pushOutput,
 }: {
   templateDirContainingRealNodeModules: string;
   templateDirLackingNodeModules: string;
+  webContents: WebContents;
+  pushOutput: (data: string | Buffer) => void;
 }) {
-  const source = path.resolve(
-    templateDirContainingRealNodeModules,
-    'node_modules',
-  );
-  const destination = path.resolve(
-    templateDirLackingNodeModules,
-    'node_modules',
+  const packageManager =
+    (await getPreferredPackageManager(webContents)) ?? 'npm';
+  pushOutput(
+    `Installing node modules for template using ${packageManager}${packageManager === 'bun' ? '' : ' (for faster installs, we recommend configuring Bun as your package manager in Settings > Execution)'}. This may take a few seconds…`,
   );
 
   try {
-    await fsPromises.cp(source, destination, { recursive: true, force: true });
+    await addModulesWithFeedback({
+      dir: templateDirLackingNodeModules,
+      packageManager,
+      onStdOutLine: pushOutput,
+      onStdErrLine: pushOutput,
+    });
   } catch (cause) {
-    throw new Error(
-      'Unable to copy node_modules from template into save location',
-      { cause },
-    );
+    throw new Error('Unable to install node modules for template', { cause });
   }
 }
 
