@@ -193,9 +193,7 @@ export const GistActionButton = observer(
     public async handleUpdate(silent = false) {
       const { appState } = this.props;
       const octo = await getOctokit(this.props.appState);
-      // JB: Disabling dependency management for now.
-      // const options = { includeDependencies: true, includeElectron: true };
-      const options = { includeDependencies: false, includeElectron: false };
+      const options = { includeDependencies: true, includeElectron: true };
       const values = await window.app.getEditorValues(options);
 
       appState.activeGistAction = GistActionState.updating;

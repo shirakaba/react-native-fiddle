@@ -139,7 +139,9 @@ export class Runner {
    * Actually run the fiddle.
    */
   public async run(): Promise<RunResult> {
-    const options = { includeDependencies: false, includeElectron: false };
+    // JB: modified to include both.
+    // const options = { includeDependencies: false, includeElectron: false };
+    const options = { includeDependencies: true, includeElectron: true };
 
     const { appState } = this;
     const currentRunnable = appState.currentElectronVersion;
