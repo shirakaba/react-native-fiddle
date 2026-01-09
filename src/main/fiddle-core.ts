@@ -121,7 +121,7 @@ export async function startFiddle(
     `[CWD] window.ElectronFiddle.startFiddle() shall serve from params.dir "${templateDirLackingNodeModules}".${params.localPath ? ` params.localPath was "${params.localPath}".` : ''}`,
   );
 
-  await symlinkNodeModules({
+  await copyNodeModulesFromTemplate({
     templateDirContainingRealNodeModules,
     templateDirLackingNodeModules,
   });
@@ -427,9 +427,9 @@ function restartRNCLI({
 
     /**
      * We have a node_modules folder in our original template, but manually
-     * saved templates omit it for some reason, so we'll symlink back to it.
+     * saved templates omit it for some reason, so we'll copy them over.
      */
-    await symlinkNodeModules({
+    await copyNodeModulesFromTemplate({
       templateDirContainingRealNodeModules,
       templateDirLackingNodeModules: dirname,
     });
@@ -447,56 +447,32 @@ function restartRNCLI({
 
 /**
  * We have a node_modules folder in our original template, but manually saved
- * templates omit it for some reason, so we'll symlink back to it.
- *
- * Unfortunately, React Native Community CLI does not work with a symlinked
- * node_modules for some reason. Commands like `start` cease to be recognised,
- * and only `--help` continues to work. So I've switched to \@rnx-kit/cli
- * instead.
+ * templates omit it for some reason, so we'll copy them over (which will be
+ * faster than an `npm install`).
  */
-async function symlinkNodeModules({
+async function copyNodeModulesFromTemplate({
   templateDirContainingRealNodeModules,
   templateDirLackingNodeModules,
 }: {
   templateDirContainingRealNodeModules: string;
   templateDirLackingNodeModules: string;
-  type?: string | null;
 }) {
-  const nodeModulesTarget = path.resolve(
+  const source = path.resolve(
     templateDirContainingRealNodeModules,
     'node_modules',
   );
-  const symlinkPath = path.resolve(
+  const destination = path.resolve(
     templateDirLackingNodeModules,
     'node_modules',
   );
 
   try {
-    await fsPromises.rm(symlinkPath);
+    await fsPromises.cp(source, destination, { recursive: true, force: true });
   } catch (cause) {
-    if (
-      !(cause instanceof Error) ||
-      !('code' in cause) ||
-      cause.code !== 'ENOENT'
-    ) {
-      throw new Error('Unable to remove old symlink', {
-        cause,
-      });
-    }
-  }
-
-  try {
-    await fsPromises.symlink(nodeModulesTarget, symlinkPath, 'dir');
-  } catch (cause) {
-    if (
-      !(cause instanceof Error) ||
-      !('code' in cause) ||
-      cause.code !== 'EEXIST'
-    ) {
-      throw new Error('Unable to symlink node_modules into save location', {
-        cause,
-      });
-    }
+    throw new Error(
+      'Unable to copy node_modules from template into save location',
+      { cause },
+    );
   }
 }
 

@@ -6,6 +6,7 @@ import fs from 'fs-extra';
 import { STATIC_DIR } from './constants';
 import { eventEmitter } from './fiddle-core-inputs';
 import { ipcMainManager } from './ipc';
+import { addModules } from './npm';
 import { readFiddle } from './utils/read-fiddle';
 import { isReleasedMajor } from './versions';
 import { EditorValues } from '../interfaces';
@@ -55,6 +56,43 @@ async function prepareTemplate(branch: string): Promise<string> {
       await fs.ensureDir(TEMPLATES_DIR);
       const { default: extract } = await import('extract-zip');
       await extract(tempfile, { dir: TEMPLATES_DIR });
+
+      /**
+       * Install its node modules.
+       *
+       * This step is unique to React Native Fiddle, as the default Electron
+       * Fiddle template (minimal-repro-39-x-y) can get by without dependencies.
+       * More precisely, it consists only of:
+       *
+       * ```json
+       * "devDependencies": {
+       *   "electron": "^39.1.2"
+       * }
+       * ```
+       *
+       * If saved to your chosen directory, this is preserved (but `npm install`
+       * is skipped, I think because the 'electron' dependency is a hard-coded
+       * exception given that electron-bin delivers the Electron.app that it's
+       * depended on for).
+       *
+       * If saved to the temporary directory (which happens when you click Run
+       * without having done an initial save), you can even see this quirk of
+       * skipping the 'electron' dependency more directly as it rewrites
+       * package.json as follows:
+       *
+       * ```json
+       * "dependencies": {},
+       * "devDependencies": {}
+       * ```
+       *
+       * As our React Native Fiddle templates will always require an
+       * `npm install` (we bundle in dev mode and need the 'react-native'
+       * package at runtime), we have to diverge from the way Electron Fiddle
+       * does things. We'll run an `npm install` during prepareTemplate() and
+       * copy that installation across whether saving to a chosen directory or a
+       * temporary directory.
+       */
+      await addModules({ dir: folder, packageManager: 'npm' });
 
       // cleanup
       console.log(`Content: ${branch} unzipped; removing "${tempfile}"`);
