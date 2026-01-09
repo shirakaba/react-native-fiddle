@@ -21,9 +21,10 @@ export async function readFiddle(
     // https://github.com/isaacs/node-graceful-fs/issues/223
     const files = await fs.readdir(folder, { encoding: 'utf8' });
     const names = files.filter((f) => {
-      if (f === 'package-lock.json') {
-        return false;
-      }
+      // JB: We no longer filter out the lockfile.
+      // if (f === 'package-lock.json') {
+      //   return false;
+      // }
 
       if (f === PACKAGE_NAME) {
         return includePackageJson;

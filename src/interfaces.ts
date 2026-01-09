@@ -149,7 +149,8 @@ export type EditorId = `${string}.${
   | 'mjs'
   | 'html'
   | 'css'
-  | 'json'}`;
+  | 'json'
+  | 'lock'}`;
 
 export type EditorValues = Record<EditorId, string>;
 

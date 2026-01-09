@@ -50,6 +50,14 @@ export function isKnownFile(filename: string): boolean {
 
 export function getEditorTitle(id: EditorId): string {
   switch (id) {
+    case 'package.json':
+    case 'package-lock.json':
+    case 'bun.lock':
+    case 'yarn.lock':
+    case 'reporter.js':
+    case 'metro.config.js':
+      return `${id} (read-only)`;
+
     case 'index.html':
       return 'HTML (index.html)';
 

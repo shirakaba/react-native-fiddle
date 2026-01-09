@@ -112,6 +112,7 @@ export class EditorMosaic {
       this.show(this.focusedFile);
     }
     this.editors.get(id)?.focus();
+    this.updateEditorsWithReadonlySetting(id);
   }
 
   /** Reset the layout to the initial layout we had when set() was called */
@@ -140,18 +141,21 @@ export class EditorMosaic {
 
   /** Add a file. If we already have a file with that name, replace it. */
   private async addFile(id: EditorId, value: string) {
-    if (
-      id.endsWith('.json') &&
-      [PACKAGE_NAME, 'package-lock.json'].includes(id)
-    ) {
-      throw new Error(
-        `Cannot add ${PACKAGE_NAME} or package-lock.json as custom files`,
-      );
-    }
+    // JB: We now support adding package.json (which solves other problems like
+    //     installing deps) and its lockfile, and just force their editors to be
+    //     read-only.
+    // if (
+    //   id.endsWith('.json') &&
+    //   [PACKAGE_NAME, 'package-lock.json'].includes(id)
+    // ) {
+    //   throw new Error(
+    //     `Cannot add ${PACKAGE_NAME} or package-lock.json as custom files`,
+    //   );
+    // }
 
     if (!isSupportedFile(id)) {
       throw new Error(
-        `Cannot add file "${id}": Must be .cjs, .js, .mjs, .html, .css, or .json`,
+        `Cannot add file "${id}": Must be .cjs, .js, .mjs, .html, .css, .json, or .lock`,
       );
     }
 
@@ -178,6 +182,7 @@ export class EditorMosaic {
     if (editor) {
       this.setEditorFromBackup(editor, backup);
       this.observeEdits(editor);
+      this.updateEditorsWithReadonlySetting(id);
     }
 
     if (
@@ -199,6 +204,13 @@ export class EditorMosaic {
   /** Show the specified file's editor */
   public show(id: EditorId) {
     this.setVisible([...getLeaves(this.mosaic), id]);
+
+    this.updateEditorsWithReadonlySetting(id);
+  }
+
+  private updateEditorsWithReadonlySetting(id: EditorId) {
+    const readOnly = readOnlyEditors.has(id);
+    this.editors.forEach((editor) => editor.updateOptions({ readOnly }));
   }
 
   private setVisible(visible: EditorId[]) {
@@ -461,8 +473,13 @@ export class EditorMosaic {
   }
 }
 
-const initiallyHiddenEditors = new Set<EditorId>([
-  MAIN_JS,
+const readOnlyEditors = new Set<EditorId>([
   'metro.config.js',
   'reporter.js',
+  PACKAGE_NAME,
+  'package-lock.json',
+  'bun.lock',
+  'yarn.lock',
 ]);
+
+const initiallyHiddenEditors = new Set<EditorId>([MAIN_JS, ...readOnlyEditors]);
