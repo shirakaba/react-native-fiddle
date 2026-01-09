@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 
-import { IpcMainInvokeEvent, shell } from 'electron';
+import { IpcMainInvokeEvent, WebContents, shell } from 'electron';
 
 import { ipcMainManager } from './ipc';
 import { exec } from './utils/exec';
@@ -52,6 +52,23 @@ export async function getIsPackageManagerInstalled(
     }
     return false;
   }
+}
+
+/**
+ * Gets the preferred package manager by checking the user's preference stored
+ * into localStorage. If no preference has been stored, returns `null`.
+ */
+export async function getPreferredPackageManager(
+  webContents: WebContents,
+): Promise<IPackageManager | null> {
+  const value = await webContents.executeJavaScript(
+    'localStorage.getItem("packageManager")',
+  );
+  if (value !== 'npm' && value !== 'yarn' && value !== 'bun') {
+    return null;
+  }
+
+  return value;
 }
 
 /**
