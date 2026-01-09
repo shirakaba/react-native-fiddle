@@ -3,7 +3,7 @@ import cp from 'node:child_process';
 import shellEnv from 'shell-env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { exec } from '../../../src/main/utils/exec';
+import { exec, fixVoltaPaths } from '../../../src/main/utils/exec';
 import { overridePlatform, resetPlatform } from '../../utils';
 
 vi.mock('node:child_process', () => ({
@@ -102,6 +102,41 @@ describe('exec', async () => {
       await maybeFixPath();
 
       expect(shellEnv).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('fixVoltaPaths()', () => {
+    it.only('sorts Volta tools to front on Windows', async () => {
+      expect(
+        fixVoltaPaths(
+          'C:\\Windows\\system32;C:\\Users\\jamie\\AppData\\Local\\Volta\\bin;C:\\Users\\jamie\\AppData\\Roaming;C:\\Users\\jamie\\AppData\\Local\\Volta\\tools\\image\\node\\22.20.0\\bin',
+          'win32',
+        ),
+      ).toBe(
+        'C:\\Users\\jamie\\AppData\\Local\\Volta\\tools\\image\\node\\22.20.0\\bin;C:\\Windows\\system32;C:\\Users\\jamie\\AppData\\Local\\Volta\\bin;C:\\Users\\jamie\\AppData\\Roaming',
+      );
+    });
+
+    it('sorts Volta tools to front on macOS', async () => {
+      expect(
+        fixVoltaPaths(
+          '/opt/homebrew/bin:/Users/jamie/.volta/bin:/Users/jamie/.local/bin:/Users/jamie/.volta/tools/image/node/22.20.0/bin',
+          'darwin',
+        ),
+      ).toBe(
+        '/Users/jamie/.volta/tools/image/node/22.20.0/bin:/opt/homebrew/bin:/Users/jamie/.volta/bin:/Users/jamie/.local/bin',
+      );
+    });
+
+    it('sorts Volta tools to front on Linux', async () => {
+      expect(
+        fixVoltaPaths(
+          '/usr/local/bin:/home/jamie/.volta/bin:/home/jamie/.local/bin:/home/jamie/.volta/tools/image/node/22.20.0/bin',
+          'linux',
+        ),
+      ).toBe(
+        '/home/jamie/.volta/tools/image/node/22.20.0/bin:/usr/local/bin:/home/jamie/.volta/bin:/home/jamie/.local/bin',
+      );
     });
   });
 });
