@@ -57,7 +57,7 @@ export async function getPackageJson(
       version: '1.0.0',
       author: appState.packageAuthor,
       scripts: {
-        start: 'rnx-cli start --custom-log-reporter-path ./reporter.js',
+        start: 'rnx-cli start',
       },
       dependencies,
       devDependencies,

@@ -33,7 +33,6 @@ const KNOWN_FILES: string[] = [
   ROOT_UI_COMPONENT_JSX,
   ROOT_UI_COMPONENT_TSX,
   'metro.config.js',
-  'reporter.js',
   'renderer.cjs',
   'renderer.js',
   'renderer.mjs',
@@ -54,7 +53,6 @@ export function getEditorTitle(id: EditorId): string {
     case 'package-lock.json':
     case 'bun.lock':
     case 'yarn.lock':
-    case 'reporter.js':
     case 'metro.config.js':
       return `${id} (read-only)`;
 

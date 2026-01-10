@@ -35,7 +35,7 @@ describe('get-package', () => {
       version: '1.0.0',
       author: defaultAuthor,
       scripts: {
-        start: 'rnx-cli start --custom-log-reporter-path ./reporter.js',
+        start: 'rnx-cli start',
       },
       dependencies: {
         say: '*',

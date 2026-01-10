@@ -475,7 +475,6 @@ export class EditorMosaic {
 
 const readOnlyEditors = new Set<EditorId>([
   'metro.config.js',
-  'reporter.js',
   PACKAGE_NAME,
   'package-lock.json',
   'bun.lock',

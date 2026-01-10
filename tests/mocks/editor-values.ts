@@ -9,6 +9,5 @@ export function createEditorValues(): EditorValues {
     [MAIN_JS]: '// index.js',
     [ROOT_UI_COMPONENT_JS]: '// App.js',
     'metro.config.js': '// metro.config.js',
-    'reporter.js': '// reporter.js',
   };
 }

@@ -197,14 +197,11 @@ function restartRNCLI({
 
   const next = spawn('node', ['--run', 'start'], {
     cwd,
-    // Inherit the stdin. Although users have no way to input into stdin
-    // themselves, we can fire keypresses into process.stdin if we want, which
-    // we may find useful for something (heck, I should have implemented
-    // auto-reconnect this way).
-    //
-    // But the main reason is just to make rnx-cli behave like a TTY so that it
-    // displays our "Dev server ready." message.
-    stdio: ['inherit', 'pipe', 'pipe'],
+    // If we ever want to make RNX-CLI a TTY (which might give us a mechanism
+    // for invoking commands like full reload and DevTools), we can pass
+    // `['inherit', 'pipe', 'pipe']` here instead, but it has the massive
+    // downside of hijacking the Webpack CLI at dev time.
+    stdio: 'pipe',
   });
 
   eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
@@ -229,7 +226,8 @@ function restartRNCLI({
     const onLine = async (line: string) => {
       pushOutput(line);
 
-      if (!line.includes('Dev server ready.')) {
+      // https://github.com/microsoft/rnx-kit/commit/414230431b16dbd562830104a27129d8c159c1b6
+      if (!line.includes('Dev server is listening on')) {
         // RNCLI hasn't started running the Metro dev server yet.
         return;
       }
