@@ -168,7 +168,7 @@ declare global {
       setShowMeTemplate(template?: string): void;
       showWarningDialog(messageOptions: MessageOptions): void;
       showWindow(): void;
-      startFiddle(params: StartFiddleParams): Promise<void>;
+      startFiddle(params: StartFiddleParams): Promise<'aborted' | 'started'>;
       stopFiddle(): void;
       taskDone(result: RunResult): void;
       themePath: string;

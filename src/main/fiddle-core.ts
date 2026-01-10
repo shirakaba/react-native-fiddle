@@ -45,13 +45,24 @@ let runner: Runner;
 // Keep track of which fiddle process belongs to which WebContents
 const fiddleProcesses = new WeakMap<WebContents, FiddleProcessesValue>();
 type FiddleProcessesValue = {
-  hostApp: { childProcess: ChildProcess } | null;
-  RNCLI: {
-    relaunchInProgress: boolean;
-    childProcess: ChildProcess;
-    cwd: string;
-    removeReadyListener?: () => void;
+  abortController: AbortController;
+  hostApp: {
+    childProcess?: ChildProcess;
   } | null;
+  RNCLI:
+    | {
+        type: 'installing node modules';
+        childProcess: ChildProcess;
+        cwd: string;
+      }
+    | {
+        type: 'running CLI';
+        relaunchInProgress: boolean;
+        childProcess: ChildProcess;
+        cwd: string;
+        removeReadyListener?: () => void;
+      }
+    | null;
 };
 
 const downloadingVersions = new Map<string, Promise<any>>();
@@ -88,8 +99,14 @@ export async function startFiddle(
   Object.assign(env, params.env);
 
   let childProcesses = fiddleProcesses.get(webContents);
-  if (!childProcesses) {
-    childProcesses = { hostApp: null, RNCLI: null };
+  if (childProcesses) {
+    childProcesses.abortController = new AbortController();
+  } else {
+    childProcesses = {
+      abortController: new AbortController(),
+      hostApp: null,
+      RNCLI: null,
+    };
     fiddleProcesses.set(webContents, childProcesses);
   }
 
@@ -134,6 +151,7 @@ export async function startFiddle(
   // This is a copy of the internal logic of runner.spawn(), with an
   // afterCreate() hook added in.
   const hostApp = await spawnRunner({
+    signal: childProcesses.abortController.signal,
     runner: runner as unknown as RunnerWithPrivates,
     versionIn:
       isValidBuild && localPath ? Installer.getExecPath(localPath) : version,
@@ -148,6 +166,7 @@ export async function startFiddle(
       await installNodeModulesForTemplate({
         templateDirContainingRealNodeModules,
         templateDirLackingNodeModules,
+        signal: childProcesses.abortController.signal,
         pushOutput,
         webContents,
       });
@@ -209,7 +228,9 @@ function restartRNCLI({
 }) {
   if (prev) {
     // Clean up previous RNCLI instance
-    childProcesses.RNCLI?.removeReadyListener?.();
+    if (childProcesses.RNCLI?.type === 'running CLI') {
+      childProcesses.RNCLI.removeReadyListener?.();
+    }
     prev.stderr?.off('data', pushOutput);
     prev.off('error', onError);
     prev.off('close', onClose);
@@ -227,11 +248,15 @@ function restartRNCLI({
   eventEmitter.removeAllListeners(IpcEvents.SAVED_LOCAL_FIDDLE);
   eventEmitter.addListener(IpcEvents.SAVED_LOCAL_FIDDLE, onSavedLocalFiddle);
 
-  childProcesses.RNCLI = {
+  const RNCLI: NonNullable<FiddleProcessesValue['RNCLI']> & {
+    type: 'running CLI';
+  } = {
+    type: 'running CLI',
     relaunchInProgress: false,
     childProcess: next,
     cwd,
   };
+  childProcesses.RNCLI = RNCLI;
 
   if (next.stdout) {
     const rl = readline.createInterface({ input: next.stdout });
@@ -262,8 +287,8 @@ function restartRNCLI({
         return;
       }
 
-      const { hostApp } = childProcesses;
-      if (!hostApp) {
+      const { abortController, hostApp } = childProcesses;
+      if (!hostApp?.childProcess || abortController.signal.aborted) {
         // No host app, no point in triggering a reconnect.
         return;
       }
@@ -340,8 +365,6 @@ function restartRNCLI({
     };
 
     rl.on('line', onLine);
-
-    const { RNCLI } = childProcesses;
     RNCLI.removeReadyListener = () => {
       rl.off('line', onLine);
       RNCLI.removeReadyListener = undefined;
@@ -352,7 +375,10 @@ function restartRNCLI({
   next.on('close', onClose);
 
   function onClose() {
-    if (childProcesses.RNCLI?.relaunchInProgress) {
+    if (
+      childProcesses.RNCLI?.type === 'running CLI' &&
+      childProcesses.RNCLI.relaunchInProgress
+    ) {
       console.log(`[CLOSE] RNCLI (closing due to relaunch) ♻️`);
       return;
     }
@@ -403,6 +429,10 @@ function restartRNCLI({
     }
     if (pid) {
       const retry = async (): Promise<'Cancel' | 'Continue'> => {
+        if (RNCLI.type !== 'running CLI') {
+          throw new Error("Expected RNCLI to be in 'running CLI' state.");
+        }
+
         RNCLI.relaunchInProgress = true;
 
         try {
@@ -451,6 +481,7 @@ function restartRNCLI({
      * saved templates omit it for some reason, so we'll copy them over.
      */
     await installNodeModulesForTemplate({
+      signal: childProcesses.abortController.signal,
       templateDirContainingRealNodeModules,
       templateDirLackingNodeModules: dirname,
       pushOutput,
@@ -470,15 +501,17 @@ function restartRNCLI({
 
 /**
  * A copy of the internals of runner.spawn(), but with extra hooks for doing
- * stuff in between steps.
+ * stuff in between steps, and support for aborting.
  */
 async function spawnRunner({
+  signal,
   runner,
   versionIn,
   fiddleIn,
   afterCreate,
   opts = {},
 }: {
+  signal?: AbortSignal;
   runner: RunnerWithPrivates;
   versionIn: string | SemVer;
   fiddleIn: FiddleSource;
@@ -502,9 +535,27 @@ async function spawnRunner({
   });
   if (!fiddle) throw new Error(`Invalid fiddle: "${inspect(fiddleIn)}"`);
 
+  if (signal?.aborted) {
+    const error = new Error('Aborted');
+    error.name = 'AbortError';
+    throw error;
+  }
+
   await afterCreate?.();
 
+  if (signal?.aborted) {
+    const error = new Error('Aborted');
+    error.name = 'AbortError';
+    throw error;
+  }
+
   const electronExec = await runner.getExec(version);
+
+  if (signal?.aborted) {
+    const error = new Error('Aborted');
+    error.name = 'AbortError';
+    throw error;
+  }
 
   let exec = electronExec;
   let args = [...(opts.args || []), fiddle.mainPath];
@@ -547,15 +598,15 @@ type TypeofRunnerWithPrivates = Omit<typeof Runner, 'headless'> & {
  * faster than an `npm install`).
  */
 async function installNodeModulesForTemplate({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  templateDirContainingRealNodeModules,
   templateDirLackingNodeModules,
   webContents,
+  signal,
   pushOutput,
 }: {
   templateDirContainingRealNodeModules: string;
   templateDirLackingNodeModules: string;
   webContents: WebContents;
+  signal?: AbortSignal;
   pushOutput: (data: string | Buffer) => void;
 }) {
   const packageManager =
@@ -564,16 +615,13 @@ async function installNodeModulesForTemplate({
     `Installing node modules for template using ${packageManager}${packageManager === 'bun' ? '' : ' (for faster installs, we recommend configuring Bun as your package manager in Settings > Execution)'}. This may take a few seconds…`,
   );
 
-  try {
-    await addModulesWithFeedback({
-      dir: templateDirLackingNodeModules,
-      packageManager,
-      onStdOutLine: pushOutput,
-      onStdErrLine: pushOutput,
-    });
-  } catch (cause) {
-    throw new Error('Unable to install node modules for template', { cause });
-  }
+  return await addModulesWithFeedback({
+    dir: templateDirLackingNodeModules,
+    packageManager,
+    signal,
+    onStdOutLine: pushOutput,
+    onStdErrLine: pushOutput,
+  });
 }
 
 /**
@@ -607,7 +655,9 @@ export async function stopFiddle(
       .then((result) => ({ type: 'resolve' as const, result }))
       .catch((error) => ({ type: 'reject' as const, error }));
   } else {
-    console.warn(`[stopFiddle] hostApp was unexpectedly nullish.`);
+    if (!hostApp) {
+      console.log(`[stopFiddle] hostApp.childProcess was nullish.`);
+    }
     hostAppPromise = Promise.resolve({
       type: 'resolve',
       result: { code: null, signal: null },
@@ -620,12 +670,17 @@ export async function stopFiddle(
       .then((result) => ({ type: 'resolve' as const, result }))
       .catch((error) => ({ type: 'reject' as const, error }));
   } else {
-    console.warn(`[stopFiddle] RNCLI was unexpectedly nullish.`);
+    console.log(`[stopFiddle] RNCLI.childProcess was nullish.`);
     RNCLIPromise = Promise.resolve({
       type: 'resolve',
       result: { code: null, signal: null },
     });
   }
+
+  // Abort any of the tasks that happen before child process initialisation
+  // (e.g. creating the FiddleFactory, getting the Electron exec, and installing
+  // the node modules).
+  childProcesses.abortController.abort('User stopped fiddle');
 
   const [hostAppResult, RNCLIResult] = await Promise.all([
     hostAppPromise,
@@ -813,7 +868,18 @@ export async function setupFiddleCore(versions: ElectronVersions) {
   ipcMainManager.handle(
     IpcEvents.START_FIDDLE,
     async (event: IpcMainInvokeEvent, params: StartFiddleParams) => {
-      await startFiddle(event.sender, params);
+      try {
+        await startFiddle(event.sender, params);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('START_FIDDLE was aborted.');
+          return 'aborted';
+        }
+
+        throw error;
+      }
+
+      return 'started';
     },
   );
   ipcMainManager.on(IpcEvents.STOP_FIDDLE, async (event: IpcMainEvent) => {

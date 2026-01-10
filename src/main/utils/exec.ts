@@ -98,18 +98,33 @@ export async function spawn({
   command,
   args,
   cwd,
+  signal,
   onStdOutLine,
   onStdErrLine,
 }: {
   command: string;
   args: readonly string[];
   cwd: string;
+  signal?: AbortSignal;
   onStdOutLine?: (line: string) => void;
   onStdErrLine?: (line: string) => void;
-}): Promise<void> {
+}) {
   await maybeFixPath();
 
   const cp = cp_spawn(command, args, { cwd });
+
+  let error: Error | null = null;
+  const onAbort = (_event: Event) => {
+    if (!error) {
+      error = new Error(
+        typeof signal?.reason === 'string' ? signal.reason : 'Aborted',
+      );
+      error.name = 'AbortError';
+    }
+
+    cp.kill();
+  };
+  signal?.addEventListener('abort', onAbort);
 
   return new Promise<void>((resolve, reject) => {
     if (onStdOutLine) {
@@ -121,12 +136,15 @@ export async function spawn({
       rl.on('line', onStdErrLine);
     }
 
-    let error: Error | null = null;
     cp.on('error', (e) => {
-      error = e;
+      if (!error) {
+        error = e;
+      }
     });
 
-    cp.on('close', (code, signal) => {
+    cp.on('close', (code, exitSignal) => {
+      signal?.removeEventListener('abort', onAbort);
+
       if (error) {
         reject(error);
         return;
@@ -135,7 +153,7 @@ export async function spawn({
       if (code !== 0) {
         reject(
           new Error(
-            `Child process exited with code ${code} and signal ${signal}`,
+            `Child process exited with code ${code} and signal ${exitSignal}`,
           ),
         );
         return;

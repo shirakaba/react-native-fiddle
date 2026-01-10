@@ -365,7 +365,18 @@ export class Runner {
    */
   private async runFiddle(params: RunFiddleParams): Promise<RunResult> {
     const { version, dir } = params;
+    console.log(`runFiddle() with dir: ${dir}`);
     const { pushOutput, flushOutput, executionFlags } = this.appState;
+    if (this.appState.isRunning) {
+      this.appState.pushOutput('Cannot run fiddle as it is already running.', {
+        isNotPre: true,
+      });
+
+      return RunResult.INVALID;
+    }
+
+    this.appState.isRunning = true;
+
     const env = this.buildChildEnvVars();
 
     // Add user-specified cli flags if any have been set.
@@ -388,25 +399,6 @@ export class Runner {
         (output: string) => {
           pushOutput(output, { bypassBuffer: false });
         },
-      );
-
-      try {
-        await window.ElectronFiddle.startFiddle({
-          ...params,
-          enableElectronLogging: this.appState.isEnablingElectronLogging,
-          options,
-          env,
-        });
-      } catch (e: any) {
-        pushOutput(`Failed to spawn Fiddle: ${e.message}`);
-        await cleanup();
-        return resolve(RunResult.FAILURE);
-      }
-
-      this.appState.isRunning = true;
-
-      pushOutput(
-        `${getReactNativeDesktopNameForPlatform()} v${version} started.`,
       );
 
       window.ElectronFiddle.removeAllListeners('fiddle-stopped');
@@ -434,6 +426,30 @@ export class Runner {
             );
           }
         },
+      );
+
+      let result: 'aborted' | 'started';
+      try {
+        result = await window.ElectronFiddle.startFiddle({
+          ...params,
+          enableElectronLogging: this.appState.isEnablingElectronLogging,
+          options,
+          env,
+        });
+      } catch (e: any) {
+        pushOutput(`Failed to spawn Fiddle: ${e.message}`);
+        await cleanup();
+        return resolve(RunResult.FAILURE);
+      }
+
+      if (result === 'aborted') {
+        pushOutput('runFiddle was aborted.');
+        await cleanup();
+        return resolve(RunResult.SUCCESS);
+      }
+
+      pushOutput(
+        `${getReactNativeDesktopNameForPlatform()} v${version} started.`,
       );
     });
   }

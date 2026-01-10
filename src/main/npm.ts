@@ -87,9 +87,11 @@ export async function addModulesWithFeedback(
   {
     dir,
     packageManager,
+    signal,
     onStdOutLine,
     onStdErrLine,
   }: PMOperationOptions & {
+    signal?: AbortSignal;
     onStdOutLine?: (line: string) => void;
     onStdErrLine?: (line: string) => void;
   },
@@ -101,6 +103,7 @@ export async function addModulesWithFeedback(
     command,
     args,
     cwd: dir,
+    signal,
     onStdOutLine,
     onStdErrLine,
   });
