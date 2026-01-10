@@ -4,9 +4,18 @@ import { homedir } from 'node:os';
 import * as path from 'node:path';
 import { platform } from 'node:process';
 import * as readline from 'node:readline';
-import { promisify } from 'node:util';
+import { inspect, promisify } from 'node:util';
 
-import { ElectronVersions, Installer, Runner } from '@electron/fiddle-core';
+import {
+  ElectronVersions,
+  Fiddle,
+  FiddleFactory,
+  FiddleSource,
+  Installer,
+  Runner,
+  RunnerSpawnOptions,
+  SemVer,
+} from '@electron/fiddle-core';
 import {
   BrowserWindow,
   IpcMainEvent,
@@ -122,35 +131,46 @@ export async function startFiddle(
     `[CWD] window.ElectronFiddle.startFiddle() shall serve from params.dir "${templateDirLackingNodeModules}".${params.localPath ? ` params.localPath was "${params.localPath}".` : ''}`,
   );
 
-  await installNodeModulesForTemplate({
-    templateDirContainingRealNodeModules,
-    templateDirLackingNodeModules,
-    pushOutput,
-    webContents,
-  });
+  // This is a copy of the internal logic of runner.spawn(), with an
+  // afterCreate() hook added in.
+  const hostApp = await spawnRunner({
+    runner: runner as unknown as RunnerWithPrivates,
+    versionIn:
+      isValidBuild && localPath ? Installer.getExecPath(localPath) : version,
+    fiddleIn: dir,
+    opts: { args: options, cwd: dir, env },
 
-  // We avoid launching the host app until the RNCLI dev server has started
-  // listening on port 8081. This avoids the host app launching with a red alert
-  // saying that it wasn't able to connect to a dev server.
-  await new Promise<void>((resolve) => {
-    restartRNCLI({
-      prev: undefined,
-      childProcesses,
-      webContents,
-      pushOutput,
-      templateDirContainingRealNodeModules,
-      cwd: templateDirLackingNodeModules,
-      onDevServerReady: () => {
-        resolve();
-      },
-    });
-  });
+    // We use this hook to install the node modules immediately after calling
+    // runner.fiddleFactory.create() (the function that takes a "local copy" of
+    // the temporary folder). Otherwise, the copy ends up including the node
+    // modules, which weigh around 400 MB and take 11 seconds to write.
+    afterCreate: async () => {
+      await installNodeModulesForTemplate({
+        templateDirContainingRealNodeModules,
+        templateDirLackingNodeModules,
+        pushOutput,
+        webContents,
+      });
 
-  const hostApp = await runner.spawn(
-    isValidBuild && localPath ? Installer.getExecPath(localPath) : version,
-    dir,
-    { args: options, cwd: dir, env },
-  );
+      // We also launch the RNCLI dev server during this hook, as launching it
+      // after the runner's spawn() call would lead to the host app waking to
+      // find that the RNCLI dev server hasn't started up yet (and presenting a
+      // red alert box).
+      await new Promise<void>((resolve) => {
+        restartRNCLI({
+          prev: undefined,
+          childProcesses,
+          webContents,
+          pushOutput,
+          templateDirContainingRealNodeModules,
+          cwd: templateDirLackingNodeModules,
+          onDevServerReady: () => {
+            resolve();
+          },
+        });
+      });
+    },
+  });
 
   childProcesses.hostApp = { childProcess: hostApp };
 
@@ -447,6 +467,79 @@ function restartRNCLI({
     });
   }
 }
+
+/**
+ * A copy of the internals of runner.spawn(), but with extra hooks for doing
+ * stuff in between steps.
+ */
+async function spawnRunner({
+  runner,
+  versionIn,
+  fiddleIn,
+  afterCreate,
+  opts = {},
+}: {
+  runner: RunnerWithPrivates;
+  versionIn: string | SemVer;
+  fiddleIn: FiddleSource;
+  /**
+   * A custom hook to be run immediately after runner.fiddleFactory.create().
+   */
+  afterCreate?: () => Promise<void>;
+  opts?: RunnerSpawnOptions;
+}) {
+  const DefaultRunnerOpts = {
+    args: [],
+    headless: false,
+    out: process.stdout,
+    showConfig: true,
+  };
+
+  opts = { ...DefaultRunnerOpts, ...opts };
+  const version = versionIn instanceof SemVer ? versionIn.version : versionIn;
+  const fiddle = await runner.fiddleFactory.create(fiddleIn, {
+    packAsAsar: opts.runFromAsar,
+  });
+  if (!fiddle) throw new Error(`Invalid fiddle: "${inspect(fiddleIn)}"`);
+
+  await afterCreate?.();
+
+  const electronExec = await runner.getExec(version);
+
+  let exec = electronExec;
+  let args = [...(opts.args || []), fiddle.mainPath];
+  if (opts.headless) {
+    ({ exec, args } = (Runner as unknown as TypeofRunnerWithPrivates).headless(
+      exec,
+      args,
+    ));
+  }
+
+  if (opts.out && opts.showConfig) {
+    opts.out.write(`${runner.spawnInfo(version, electronExec, fiddle)}\n`);
+  }
+  const child = spawn(exec, args, opts);
+  if (opts.out) {
+    child.stdout?.pipe(opts.out);
+    child.stderr?.pipe(opts.out);
+  }
+  return child;
+}
+
+type RunnerWithPrivates = Omit<Runner, 'fiddleFactory' | 'getExec'> & {
+  fiddleFactory: FiddleFactory;
+  getExec(electron: import('node:fs').PathLike): Promise<string>;
+  spawnInfo: (version: string, exec: string, fiddle: Fiddle) => string;
+};
+type TypeofRunnerWithPrivates = Omit<typeof Runner, 'headless'> & {
+  headless(
+    exec: string,
+    args: Array<string>,
+  ): {
+    exec: string;
+    args: Array<string>;
+  };
+};
 
 /**
  * We have a node_modules folder in our original template, but manually saved
