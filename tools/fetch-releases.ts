@@ -19,13 +19,21 @@ export async function populateReleases() {
   try {
     rnmPrebuildReleases = await getRnmPrebuildReleases();
   } catch (error) {
-    // 403 likely indicates a rate limit error. I'm adding this fallback to
-    // allow me to keep on developing despite having hit the rate limit.
-    if (error instanceof Error && error.message === 'GitHub API error: 403') {
+    // - 403 likely indicates a rate limit error.
+    // - 504 is a server timeout.
+    // I'm adding this fallback to allow me to keep on developing despite GitHub
+    // becoming inaccessible.
+    if (
+      error instanceof Error &&
+      (error.message === 'GitHub API error: 403' ||
+        error.message === 'GitHub API error: 504')
+    ) {
       console.error(
-        'Got response with HTTP Status 403 when calling getRnmPrebuildReleases(). Falling back to hard-coded v0.79.0 release.',
+        `Got "${error.message}" response when calling getRnmPrebuildReleases(). Falling back to hard-coded v0.79.0 release.`,
       );
+      // https://github.com/shirakaba/rnmprebuilds/releases
       rnmPrebuildReleases = [
+        { tag_name: 'v0.79.1', published_at: new Date('2025-11-22T12:01:43Z') },
         { tag_name: 'v0.79.0', published_at: new Date('2025-11-01T17:58:52Z') },
       ];
     } else {
