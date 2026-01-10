@@ -3,6 +3,7 @@ import semver from 'semver';
 
 import { Bisector } from './bisect';
 import { AppState } from './state';
+import { getReactNativeDesktopNameForPlatform } from './utils/electron-name';
 import { maybePlural } from './utils/plural-maybe';
 import {
   FileTransformOperation,
@@ -404,7 +405,9 @@ export class Runner {
 
       this.appState.isRunning = true;
 
-      pushOutput(`Electron v${version} started.`);
+      pushOutput(
+        `${getReactNativeDesktopNameForPlatform()} v${version} started.`,
+      );
 
       window.ElectronFiddle.removeAllListeners('fiddle-stopped');
       window.ElectronFiddle.addEventListener(
