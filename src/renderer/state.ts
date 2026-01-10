@@ -1075,7 +1075,7 @@ export class AppState {
 
     const entry: OutputEntry = {
       isNotPre,
-      text: strData.trim(),
+      text: strData,
       timeString: this.timeFmt.format(new Date()),
     };
     window.ElectronFiddle.pushOutputEntry(entry);
