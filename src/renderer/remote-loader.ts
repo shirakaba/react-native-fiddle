@@ -180,9 +180,11 @@ export class RemoteLoader {
           this.appState.modules = new Map(Object.entries(deps));
         }
 
+        // JB: We now allow them to be visible.
+        //
         // JSON files are supported, but we don't want to add package.json
         // or the lockfile to the visible editor array.
-        if ([PACKAGE_NAME, 'package-lock.json'].includes(id)) continue;
+        // if ([PACKAGE_NAME, 'package-lock.json'].includes(id)) continue;
 
         if (!isSupportedFile(id)) continue;
 
