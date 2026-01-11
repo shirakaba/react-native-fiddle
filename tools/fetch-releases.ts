@@ -28,14 +28,15 @@ export async function populateReleases() {
       (error.message === 'GitHub API error: 403' ||
         error.message === 'GitHub API error: 504')
     ) {
-      console.error(
-        `Got "${error.message}" response when calling getRnmPrebuildReleases(). Falling back to hard-coded v0.79.0 release.`,
-      );
       // https://github.com/shirakaba/rnmprebuilds/releases
+      // https://api.github.com/repos/shirakaba/rnmprebuilds/releases
       rnmPrebuildReleases = [
-        { tag_name: 'v0.79.1', published_at: new Date('2025-11-22T12:01:43Z') },
-        { tag_name: 'v0.79.0', published_at: new Date('2025-11-01T17:58:52Z') },
+        { tag_name: 'v0.79.1', published_at: new Date('2026-01-11T14:01:13Z') },
       ];
+
+      console.error(
+        `Got "${error.message}" response when calling getRnmPrebuildReleases(). Falling back to hard-coded ${rnmPrebuildReleases.at(-1)!.tag_name} release.`,
+      );
     } else {
       throw error;
     }
