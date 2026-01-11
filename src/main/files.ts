@@ -199,7 +199,7 @@ export async function saveFiles(
   filePath: string,
   files: Files,
 ) {
-  console.log(`saveFiddleWithTransforms: Asked to save to ${filePath}`);
+  console.log(`[saveFiles] Asked to save to ${filePath}`);
 
   for (const [fileName, content] of files) {
     const savePath = path.join(filePath, fileName);

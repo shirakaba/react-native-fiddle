@@ -105,7 +105,13 @@ declare global {
       addModules(
         { dir, packageManager }: PMOperationOptions,
         ...names: Array<string>
-      ): Promise<string>;
+      ): Promise<{
+        updatedPackageJson: string;
+        updatedPackageLockJson: string;
+        updatedBunLock?: string;
+        updatedYarnLock?: string;
+        stdout: string;
+      }>;
       arch: string;
       blockAccelerators(acceleratorsToBlock: BlockableAccelerator[]): void;
       cleanupDirectory(dir: string): Promise<boolean>;

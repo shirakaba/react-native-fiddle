@@ -471,6 +471,28 @@ export class EditorMosaic {
       }
     });
   }
+
+  /** Replace the contents of an existing file, or create it if missing */
+  public replaceContents(id: EditorId, contents: string): void {
+    if (!this.files.has(id)) {
+      void this.addNewFile(id, contents);
+      return;
+    }
+
+    const editor = this.editors.get(id);
+    if (editor) {
+      editor.getModel()?.setValue(contents);
+    } else {
+      const backup = this.backups.get(id);
+      backup?.model.setValue(contents);
+    }
+
+    // Force a re-render (there may be a more elegant way to do this)
+    const mosaic = EditorMosaic.createMosaic([...getLeaves(this.mosaic)]);
+    this.mosaic = mosaic;
+
+    void this.updateCurrentHash();
+  }
 }
 
 const readOnlyEditors = new Set<EditorId>([

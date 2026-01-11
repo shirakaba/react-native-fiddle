@@ -1,10 +1,15 @@
+import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { IpcMainInvokeEvent, WebContents, shell } from 'electron';
 
 import { ipcMainManager } from './ipc';
 import { exec, spawn } from './utils/exec';
-import { IPackageManager, PMOperationOptions } from '../interfaces';
+import {
+  IPackageManager,
+  PACKAGE_NAME,
+  PMOperationOptions,
+} from '../interfaces';
 import { IpcEvents } from '../ipc-events';
 
 let isNpmInstalled: boolean | null = null;
@@ -146,11 +151,54 @@ export async function packageRun(
 export async function setupNpm() {
   ipcMainManager.handle(
     IpcEvents.NPM_ADD_MODULES,
-    (
+    async (
       _: IpcMainInvokeEvent,
       { dir, packageManager }: PMOperationOptions,
       ...names: Array<string>
-    ) => addModules({ dir, packageManager }, ...names),
+    ) => {
+      const stdout = await addModules({ dir, packageManager }, ...names);
+
+      const packageJson = path.resolve(dir, PACKAGE_NAME);
+      const packageLockJson = path.resolve(dir, 'package-lock.json');
+      const bunLock = path.resolve(dir, 'bun.lock');
+      const yarnLock = path.resolve(dir, 'yarn.lock');
+
+      const updatedPackageJson = await readFile(packageJson, 'utf-8');
+      const updatedPackageLockJson = await readFile(packageLockJson, 'utf-8');
+
+      let updatedBunLock: string | undefined;
+      try {
+        updatedBunLock = await readFile(bunLock, 'utf-8');
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !('code' in error) ||
+          error.code !== 'ENOENT'
+        ) {
+          throw error;
+        }
+      }
+      let updatedYarnLock: string | undefined;
+      try {
+        updatedYarnLock = await readFile(yarnLock, 'utf-8');
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !('code' in error) ||
+          error.code !== 'ENOENT'
+        ) {
+          throw error;
+        }
+      }
+
+      return {
+        updatedPackageJson,
+        updatedPackageLockJson,
+        updatedBunLock,
+        updatedYarnLock,
+        stdout,
+      };
+    },
   );
   ipcMainManager.handle(
     IpcEvents.NPM_IS_PM_INSTALLED,

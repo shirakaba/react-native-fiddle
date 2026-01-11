@@ -9,6 +9,7 @@ import {
   FileTransformOperation,
   InstallState,
   MAIN_MJS,
+  PACKAGE_NAME,
   PMOperationOptions,
   PackageJsonOptions,
   RunResult,
@@ -324,11 +325,33 @@ export class Runner {
         { isNotPre: true },
       );
 
-      const result = await window.ElectronFiddle.addModules(
-        pmOptions,
-        ...modules,
+      const {
+        stdout,
+        updatedPackageJson,
+        updatedPackageLockJson,
+        updatedBunLock,
+        updatedYarnLock,
+      } = await window.ElectronFiddle.addModules(pmOptions, ...modules);
+      pushOutput(stdout);
+
+      // We update the editor to reflect any changes the files underwent.
+      this.appState.editorMosaic.replaceContents(
+        PACKAGE_NAME,
+        updatedPackageJson,
       );
-      pushOutput(result);
+      this.appState.editorMosaic.replaceContents(
+        'package-lock.json',
+        updatedPackageLockJson,
+      );
+      if (updatedBunLock) {
+        this.appState.editorMosaic.replaceContents('bun.lock', updatedBunLock);
+      }
+      if (updatedYarnLock) {
+        this.appState.editorMosaic.replaceContents(
+          'yarn.lock',
+          updatedYarnLock,
+        );
+      }
 
       this.appState.isInstallingModules = false;
     }
@@ -484,7 +507,35 @@ export class Runner {
     const pm = options.packageManager;
     try {
       this.appState.pushOutput(`Now running "${pm} install..."`);
-      this.appState.pushOutput(await window.ElectronFiddle.addModules(options));
+
+      const {
+        stdout,
+        updatedPackageJson,
+        updatedPackageLockJson,
+        updatedBunLock,
+        updatedYarnLock,
+      } = await window.ElectronFiddle.addModules(options);
+      this.appState.pushOutput(stdout);
+
+      // We update the editor to reflect any changes the files underwent.
+      this.appState.editorMosaic.replaceContents(
+        PACKAGE_NAME,
+        updatedPackageJson,
+      );
+      this.appState.editorMosaic.replaceContents(
+        'package-lock.json',
+        updatedPackageLockJson,
+      );
+      if (updatedBunLock) {
+        this.appState.editorMosaic.replaceContents('bun.lock', updatedBunLock);
+      }
+      if (updatedYarnLock) {
+        this.appState.editorMosaic.replaceContents(
+          'yarn.lock',
+          updatedYarnLock,
+        );
+      }
+
       return true;
     } catch (error: any) {
       this.appState.pushError(`Failed to run "${pm} install".`, error);
