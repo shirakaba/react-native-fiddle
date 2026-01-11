@@ -784,9 +784,28 @@ async function killChildProcess(
 }
 
 export async function setupFiddleCore(versions: ElectronVersions) {
+  // TODO: Replace this (currently identical) implementation of execSubpath with
+  //       the new paths we want to use in our prebuilds.
+  Installer.execSubpath = function customExecSubpath(
+    platform = process.platform,
+  ) {
+    switch (platform) {
+      case 'darwin':
+        return 'React Native.app/Contents/MacOS/React Native';
+      case 'win32':
+        return 'react native.exe';
+      default:
+        return 'react native';
+    }
+  };
+
   // For managing downloads and versions for electron
   installer = new Installer({
     electronDownloads: ELECTRON_DOWNLOAD_PATH,
+    // TODO: Decide whether it's worth renaming this to react-native-bin, and
+    //       whether it's worth patching `Installer.prototype.rebuildStates()`
+    //       and callers of `getZipName()` to change the download filename from
+    //       `electron-v${version}-${process.platform}-${process.arch}.zip`.
     electronInstall: ELECTRON_INSTALL_PATH,
   });
 
