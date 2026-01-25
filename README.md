@@ -42,6 +42,11 @@ Visual Studio Code!
 
 React Native Fiddle is a community-driven project that welcomes all sorts of contributions. Please check out our [Contributing Guide](https://github.com/electron/fiddle/blob/main/CONTRIBUTING.md) for more details.
 
+## Related projects
+
+- [react-native-fiddle-repro](https://github.com/shirakaba/react-native-fiddle-repro): The project template that React Native Fiddle app clones.
+- [rnmprebuilds](https://github.com/shirakaba/rnmprebuilds): The repository for building and hosting prebuilds of `React Native.app`.
+
 ## License
 
 [MIT, please see the LICENSE file for full details](https://github.com/shirakaba/react-native-fiddle/blob/main/LICENSE.md).
