@@ -29,7 +29,6 @@ import { eventEmitter, getCurrentTemplateDir } from './fiddle-core-inputs';
 import { cleanupDirectory } from './files';
 import { ipcMainManager } from './ipc';
 import { addModulesWithFeedback, getPreferredPackageManager } from './npm';
-import { treeKill } from './tree-kill';
 import { normaliseMaybeDevtronValue } from './utils/devtron';
 import {
   DownloadVersionParams,
@@ -750,7 +749,9 @@ async function killChildProcess(
         // a forked process. As such, let's hunt it down by its port.
         const { stdout } = await execPromise('lsof -i :8081');
         const lines = stdout.split('\n');
-        const metroProcess = lines.find((line) => line.startsWith('node'));
+        const metroProcess = lines.find(
+          (line) => line.startsWith('node') && line.endsWith('(LISTEN)'),
+        );
         if (metroProcess) {
           const match = /node\s+(\d+)/.exec(metroProcess);
           const matchedPid = match?.at(1);
@@ -778,7 +779,7 @@ async function killChildProcess(
       }
     }
 
-    treeKill(pid, 'SIGTERM');
+    child.kill();
 
     const sigKillTimeout = setTimeout(() => {
       if (child.exitCode !== null) {
@@ -789,9 +790,9 @@ async function killChildProcess(
       }
 
       console.log(
-        `[stopFiddle] tree kill of ${type} wasn't enough, so will SIGKILL`,
+        `[stopFiddle] ${type} child still hasn't exited since graceful kill signal, so will send SIGKILL.`,
       );
-      treeKill(pid, 'SIGKILL');
+      child.kill('SIGKILL');
     }, 1000);
   });
 }
