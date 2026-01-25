@@ -26,6 +26,7 @@ import {
 
 import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
 import { eventEmitter, getCurrentTemplateDir } from './fiddle-core-inputs';
+import { cleanupDirectory } from './files';
 import { ipcMainManager } from './ipc';
 import { addModulesWithFeedback, getPreferredPackageManager } from './npm';
 import { treeKill } from './tree-kill';
@@ -163,6 +164,10 @@ export async function startFiddle(
     // the temporary folder). Otherwise, the copy ends up including the node
     // modules, which weigh around 400 MB and take 11 seconds to write.
     afterCreate: async () => {
+      // This installation used to be handled in Runner.run(), in runner.ts.
+      // However, as that only handles one case where modules need to be
+      // installed, we've since moved it into startFiddle(). The downside is
+      // that we no longer track appState.isInstallingModules.
       await installNodeModulesForTemplate({
         templateDirContainingRealNodeModules,
         templateDirLackingNodeModules,
@@ -615,13 +620,21 @@ async function installNodeModulesForTemplate({
     `Installing node modules for template using ${packageManager}${packageManager === 'bun' ? '' : ' (for faster installs, we recommend configuring Bun as your package manager in Settings > Execution)'}. This may take a few seconds…`,
   );
 
-  return await addModulesWithFeedback({
-    dir: templateDirLackingNodeModules,
-    packageManager,
-    signal,
-    onStdOutLine: pushOutput,
-    onStdErrLine: pushOutput,
-  });
+  try {
+    ipcMainManager.send(IpcEvents.NPM_ADD_MODULES_STATUS, [true], webContents);
+    return await addModulesWithFeedback({
+      dir: templateDirLackingNodeModules,
+      packageManager,
+      signal,
+      onStdOutLine: pushOutput,
+      onStdErrLine: pushOutput,
+    });
+  } catch (error) {
+    await cleanupDirectory(templateDirLackingNodeModules);
+    throw error;
+  } finally {
+    ipcMainManager.send(IpcEvents.NPM_ADD_MODULES_STATUS, [false], webContents);
+  }
 }
 
 /**

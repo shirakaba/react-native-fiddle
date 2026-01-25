@@ -38,10 +38,12 @@ export class Runner {
   constructor(private readonly appState: AppState) {
     this.run = this.run.bind(this);
     this.stop = this.stop.bind(this);
+    this.updateIsInstallingModules = this.updateIsInstallingModules.bind(this);
 
     window.ElectronFiddle.removeAllListeners('run-fiddle');
     window.ElectronFiddle.removeAllListeners('package-fiddle');
     window.ElectronFiddle.removeAllListeners('make-fiddle');
+    window.ElectronFiddle.removeAllListeners('npm-add-modules-status');
 
     window.ElectronFiddle.addEventListener('run-fiddle', this.run);
     window.ElectronFiddle.addEventListener('package-fiddle', () => {
@@ -50,6 +52,14 @@ export class Runner {
     window.ElectronFiddle.addEventListener('make-fiddle', () => {
       this.performForgeOperation(ForgeCommands.MAKE);
     });
+    window.ElectronFiddle.addEventListener(
+      'npm-add-modules-status',
+      this.updateIsInstallingModules,
+    );
+  }
+
+  public updateIsInstallingModules(value: boolean) {
+    this.appState.isInstallingModules = value;
   }
 
   /**
@@ -184,21 +194,7 @@ export class Runner {
     appState.isConsoleShowing = true;
 
     const dir = await this.saveToTemp(options);
-    const packageManager = appState.packageManager;
-
     if (!dir) return RunResult.INVALID;
-
-    try {
-      await this.installModules({ dir, packageManager });
-    } catch (error: any) {
-      console.error('Runner: Could not install modules', error);
-
-      appState.pushError('Could not install modules', error.message);
-      appState.isInstallingModules = false;
-
-      await window.ElectronFiddle.cleanupDirectory(dir);
-      return RunResult.INVALID;
-    }
 
     const isReady =
       state === InstallState.installed ||

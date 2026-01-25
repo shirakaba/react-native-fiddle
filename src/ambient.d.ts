@@ -102,6 +102,10 @@ declare global {
         type: 'electron-types-changed',
         listener: (types: string, version: string) => void,
       ): void;
+      addEventListener(
+        type: 'npm-add-modules-status',
+        listener: (value: boolean) => void,
+      ): void;
       addModules(
         { dir, packageManager }: PMOperationOptions,
         ...names: Array<string>

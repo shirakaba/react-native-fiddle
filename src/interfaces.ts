@@ -192,6 +192,7 @@ export type FiddleEvent =
   | 'make-fiddle'
   | 'new-fiddle'
   | 'new-test'
+  | 'npm-add-modules-status'
   | 'open-fiddle'
   | 'open-settings'
   | 'open-template'
