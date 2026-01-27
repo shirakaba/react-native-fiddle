@@ -60,6 +60,7 @@ describe('fiddle-core', () => {
         localPath: undefined,
         options: [],
         version,
+        modules: {},
       });
 
       expect(runner.spawn).toHaveBeenCalledWith(
@@ -86,6 +87,7 @@ describe('fiddle-core', () => {
         localPath: undefined,
         options: [],
         version,
+        modules: {},
       });
 
       expect(runner.spawn).toHaveBeenCalledWith(
@@ -116,6 +118,7 @@ describe('fiddle-core', () => {
         localPath: undefined,
         options: [],
         version,
+        modules: {},
       });
 
       expect(runner.spawn).toHaveBeenCalledWith(

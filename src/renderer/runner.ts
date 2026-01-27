@@ -385,7 +385,7 @@ export class Runner {
   private async runFiddle(params: RunFiddleParams): Promise<RunResult> {
     const { version, dir } = params;
     console.log(`runFiddle() with dir: ${dir}`);
-    const { pushOutput, flushOutput, executionFlags } = this.appState;
+    const { pushOutput, flushOutput, executionFlags, modules } = this.appState;
     if (this.appState.isRunning) {
       this.appState.pushOutput('Cannot run fiddle as it is already running.', {
         isNotPre: true,
@@ -447,6 +447,9 @@ export class Runner {
         },
       );
 
+      const modulesRecord: Record<string, string> = {};
+      modules.forEach((value, key) => (modulesRecord[key] = value));
+
       let result: 'aborted' | 'started';
       try {
         result = await window.ElectronFiddle.startFiddle({
@@ -454,6 +457,7 @@ export class Runner {
           enableElectronLogging: this.appState.isEnablingElectronLogging,
           options,
           env,
+          modules: modulesRecord,
         });
       } catch (e: any) {
         pushOutput(`Failed to spawn Fiddle: ${e.message}`);

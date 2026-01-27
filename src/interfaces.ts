@@ -291,6 +291,7 @@ export interface StartFiddleParams {
   version: string; // The user selected version
   dir: string;
   options: string[];
+  modules: Record<string, string>;
   env: { [x: string]: string | undefined };
 }
 

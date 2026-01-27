@@ -82,6 +82,7 @@ export async function startFiddle(
     localPath,
     options,
     version,
+    modules,
   } = params;
 
   const env = { ...process.env };
@@ -173,6 +174,7 @@ export async function startFiddle(
         signal: childProcesses.abortController.signal,
         pushOutput,
         webContents,
+        modules,
       });
 
       // We also launch the RNCLI dev server during this hook, as launching it
@@ -190,6 +192,7 @@ export async function startFiddle(
           onDevServerReady: () => {
             resolve();
           },
+          modules,
         });
       });
     },
@@ -221,6 +224,7 @@ function restartRNCLI({
   cwd,
   templateDirContainingRealNodeModules,
   onDevServerReady,
+  modules,
 }: {
   prev?: ChildProcess;
   childProcesses: FiddleProcessesValue;
@@ -229,6 +233,7 @@ function restartRNCLI({
   cwd: string;
   templateDirContainingRealNodeModules: string;
   onDevServerReady?: () => void;
+  modules: Record<string, string>;
 }) {
   if (prev) {
     // Clean up previous RNCLI instance
@@ -490,6 +495,7 @@ function restartRNCLI({
       templateDirLackingNodeModules: dirname,
       pushOutput,
       webContents,
+      modules,
     });
 
     restartRNCLI({
@@ -499,6 +505,7 @@ function restartRNCLI({
       pushOutput,
       cwd: dirname,
       templateDirContainingRealNodeModules,
+      modules,
     });
   }
 }
@@ -606,12 +613,14 @@ async function installNodeModulesForTemplate({
   webContents,
   signal,
   pushOutput,
+  modules = {},
 }: {
   templateDirContainingRealNodeModules: string;
   templateDirLackingNodeModules: string;
   webContents: WebContents;
   signal?: AbortSignal;
   pushOutput: (data: string | Buffer) => void;
+  modules?: Record<string, string>;
 }) {
   const packageManager =
     (await getPreferredPackageManager(webContents)) ?? 'npm';
@@ -619,15 +628,23 @@ async function installNodeModulesForTemplate({
     `Installing node modules for template using ${packageManager}${packageManager === 'bun' ? '' : ' (for faster installs, we recommend configuring Bun as your package manager in Settings > Execution)'}. This may take a few seconds…`,
   );
 
+  const moduleArgs = new Array<string>();
+  for (const [key, value] of Object.entries(modules)) {
+    moduleArgs.push(`${key}@${value}`);
+  }
+
   try {
     ipcMainManager.send(IpcEvents.NPM_ADD_MODULES_STATUS, [true], webContents);
-    return await addModulesWithFeedback({
-      dir: templateDirLackingNodeModules,
-      packageManager,
-      signal,
-      onStdOutLine: pushOutput,
-      onStdErrLine: pushOutput,
-    });
+    return await addModulesWithFeedback(
+      {
+        dir: templateDirLackingNodeModules,
+        packageManager,
+        signal,
+        onStdOutLine: pushOutput,
+        onStdErrLine: pushOutput,
+      },
+      ...moduleArgs,
+    );
   } catch (error) {
     await cleanupDirectory(templateDirLackingNodeModules);
     throw error;

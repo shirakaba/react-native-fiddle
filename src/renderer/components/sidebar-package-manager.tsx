@@ -43,6 +43,9 @@ export class SidebarPackageManager extends React.Component<IProps, IState> {
     this.state.versionsCache.set(item.name, Object.keys(item.versions));
     const newCache = new Map(this.state.versionsCache);
     this.setState({ suggestions: [], versionsCache: newCache });
+    // XXX Should reinstall and restart the packager at this point, i.e. Stop
+    //     and Run. Though we could just make it so that every Run observes
+    //     these extra packages.
   };
 
   public render() {
