@@ -148,6 +148,48 @@ export async function packageRun(
   return result;
 }
 
+export async function readPackageJsonAndLockfiles(dir: string) {
+  const packageJson = path.resolve(dir, PACKAGE_NAME);
+  const packageLockJson = path.resolve(dir, 'package-lock.json');
+  const bunLock = path.resolve(dir, 'bun.lock');
+  const yarnLock = path.resolve(dir, 'yarn.lock');
+
+  const updatedPackageJson = await readFile(packageJson, 'utf-8');
+  const updatedPackageLockJson = await readFile(packageLockJson, 'utf-8');
+
+  let updatedBunLock: string | undefined;
+  try {
+    updatedBunLock = await readFile(bunLock, 'utf-8');
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !('code' in error) ||
+      error.code !== 'ENOENT'
+    ) {
+      throw error;
+    }
+  }
+  let updatedYarnLock: string | undefined;
+  try {
+    updatedYarnLock = await readFile(yarnLock, 'utf-8');
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !('code' in error) ||
+      error.code !== 'ENOENT'
+    ) {
+      throw error;
+    }
+  }
+
+  return {
+    updatedPackageJson,
+    updatedPackageLockJson,
+    updatedBunLock,
+    updatedYarnLock,
+  };
+}
+
 export async function setupNpm() {
   ipcMainManager.handle(
     IpcEvents.NPM_ADD_MODULES,
@@ -157,45 +199,10 @@ export async function setupNpm() {
       ...names: Array<string>
     ) => {
       const stdout = await addModules({ dir, packageManager }, ...names);
-
-      const packageJson = path.resolve(dir, PACKAGE_NAME);
-      const packageLockJson = path.resolve(dir, 'package-lock.json');
-      const bunLock = path.resolve(dir, 'bun.lock');
-      const yarnLock = path.resolve(dir, 'yarn.lock');
-
-      const updatedPackageJson = await readFile(packageJson, 'utf-8');
-      const updatedPackageLockJson = await readFile(packageLockJson, 'utf-8');
-
-      let updatedBunLock: string | undefined;
-      try {
-        updatedBunLock = await readFile(bunLock, 'utf-8');
-      } catch (error) {
-        if (
-          !(error instanceof Error) ||
-          !('code' in error) ||
-          error.code !== 'ENOENT'
-        ) {
-          throw error;
-        }
-      }
-      let updatedYarnLock: string | undefined;
-      try {
-        updatedYarnLock = await readFile(yarnLock, 'utf-8');
-      } catch (error) {
-        if (
-          !(error instanceof Error) ||
-          !('code' in error) ||
-          error.code !== 'ENOENT'
-        ) {
-          throw error;
-        }
-      }
+      const updatedFiles = await readPackageJsonAndLockfiles(dir);
 
       return {
-        updatedPackageJson,
-        updatedPackageLockJson,
-        updatedBunLock,
-        updatedYarnLock,
+        ...updatedFiles,
         stdout,
       };
     },

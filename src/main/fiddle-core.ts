@@ -28,7 +28,11 @@ import { ELECTRON_DOWNLOAD_PATH, ELECTRON_INSTALL_PATH } from './constants';
 import { eventEmitter, getCurrentTemplateDir } from './fiddle-core-inputs';
 import { cleanupDirectory } from './files';
 import { ipcMainManager } from './ipc';
-import { addModulesWithFeedback, getPreferredPackageManager } from './npm';
+import {
+  addModulesWithFeedback,
+  getPreferredPackageManager,
+  readPackageJsonAndLockfiles,
+} from './npm';
 import { normaliseMaybeDevtronValue } from './utils/devtron';
 import {
   DownloadVersionParams,
@@ -635,7 +639,7 @@ async function installNodeModulesForTemplate({
 
   try {
     ipcMainManager.send(IpcEvents.NPM_ADD_MODULES_STATUS, [true], webContents);
-    return await addModulesWithFeedback(
+    await addModulesWithFeedback(
       {
         dir: templateDirLackingNodeModules,
         packageManager,
@@ -645,6 +649,16 @@ async function installNodeModulesForTemplate({
       },
       ...moduleArgs,
     );
+
+    const updatedFiles = await readPackageJsonAndLockfiles(
+      templateDirLackingNodeModules,
+    );
+    ipcMainManager.send(
+      IpcEvents.NPM_PACKAGE_JSON_AND_LOCKFILES_UPDATED,
+      [updatedFiles],
+      webContents,
+    );
+    return;
   } catch (error) {
     await cleanupDirectory(templateDirLackingNodeModules);
     throw error;

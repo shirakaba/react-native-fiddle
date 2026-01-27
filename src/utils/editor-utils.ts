@@ -48,5 +48,5 @@ export function getSuffix(filename: string) {
 }
 
 export function isSupportedFile(filename: string): filename is EditorId {
-  return /\.(css|html|cjs|js|mjs|json|ts|tsx|jsx)$/i.test(filename);
+  return /\.(css|html|cjs|js|mjs|json|ts|tsx|jsx|lock)$/i.test(filename);
 }

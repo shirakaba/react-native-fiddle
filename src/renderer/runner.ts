@@ -39,11 +39,16 @@ export class Runner {
     this.run = this.run.bind(this);
     this.stop = this.stop.bind(this);
     this.updateIsInstallingModules = this.updateIsInstallingModules.bind(this);
+    this.updatePackageJsonAndLockfiles =
+      this.updatePackageJsonAndLockfiles.bind(this);
 
     window.ElectronFiddle.removeAllListeners('run-fiddle');
     window.ElectronFiddle.removeAllListeners('package-fiddle');
     window.ElectronFiddle.removeAllListeners('make-fiddle');
     window.ElectronFiddle.removeAllListeners('npm-add-modules-status');
+    window.ElectronFiddle.removeAllListeners(
+      'npm-package-json-and-lockfiles-updated',
+    );
 
     window.ElectronFiddle.addEventListener('run-fiddle', this.run);
     window.ElectronFiddle.addEventListener('package-fiddle', () => {
@@ -56,10 +61,41 @@ export class Runner {
       'npm-add-modules-status',
       this.updateIsInstallingModules,
     );
+    window.ElectronFiddle.addEventListener(
+      'npm-package-json-and-lockfiles-updated',
+      this.updatePackageJsonAndLockfiles,
+    );
   }
 
   public updateIsInstallingModules(value: boolean) {
     this.appState.isInstallingModules = value;
+  }
+
+  public updatePackageJsonAndLockfiles({
+    updatedPackageJson,
+    updatedPackageLockJson,
+    updatedBunLock,
+    updatedYarnLock,
+  }: {
+    updatedPackageJson: string;
+    updatedPackageLockJson: string;
+    updatedBunLock?: string;
+    updatedYarnLock?: string;
+  }) {
+    this.appState.editorMosaic.replaceContents(
+      PACKAGE_NAME,
+      updatedPackageJson,
+    );
+    this.appState.editorMosaic.replaceContents(
+      'package-lock.json',
+      updatedPackageLockJson,
+    );
+    if (updatedBunLock) {
+      this.appState.editorMosaic.replaceContents('bun.lock', updatedBunLock);
+    }
+    if (updatedYarnLock) {
+      this.appState.editorMosaic.replaceContents('yarn.lock', updatedYarnLock);
+    }
   }
 
   /**
@@ -321,33 +357,14 @@ export class Runner {
         { isNotPre: true },
       );
 
-      const {
-        stdout,
-        updatedPackageJson,
-        updatedPackageLockJson,
-        updatedBunLock,
-        updatedYarnLock,
-      } = await window.ElectronFiddle.addModules(pmOptions, ...modules);
+      const { stdout, ...updates } = await window.ElectronFiddle.addModules(
+        pmOptions,
+        ...modules,
+      );
       pushOutput(stdout);
 
       // We update the editor to reflect any changes the files underwent.
-      this.appState.editorMosaic.replaceContents(
-        PACKAGE_NAME,
-        updatedPackageJson,
-      );
-      this.appState.editorMosaic.replaceContents(
-        'package-lock.json',
-        updatedPackageLockJson,
-      );
-      if (updatedBunLock) {
-        this.appState.editorMosaic.replaceContents('bun.lock', updatedBunLock);
-      }
-      if (updatedYarnLock) {
-        this.appState.editorMosaic.replaceContents(
-          'yarn.lock',
-          updatedYarnLock,
-        );
-      }
+      this.updatePackageJsonAndLockfiles(updates);
 
       this.appState.isInstallingModules = false;
     }
@@ -449,6 +466,8 @@ export class Runner {
 
       const modulesRecord: Record<string, string> = {};
       modules.forEach((value, key) => (modulesRecord[key] = value));
+      pushOutput(`modules: ${JSON.stringify(modules)}`);
+      pushOutput(`modulesRecord: ${JSON.stringify(modulesRecord)}`);
 
       let result: 'aborted' | 'started';
       try {
@@ -508,33 +527,12 @@ export class Runner {
     try {
       this.appState.pushOutput(`Now running "${pm} install..."`);
 
-      const {
-        stdout,
-        updatedPackageJson,
-        updatedPackageLockJson,
-        updatedBunLock,
-        updatedYarnLock,
-      } = await window.ElectronFiddle.addModules(options);
+      const { stdout, ...updates } =
+        await window.ElectronFiddle.addModules(options);
       this.appState.pushOutput(stdout);
 
       // We update the editor to reflect any changes the files underwent.
-      this.appState.editorMosaic.replaceContents(
-        PACKAGE_NAME,
-        updatedPackageJson,
-      );
-      this.appState.editorMosaic.replaceContents(
-        'package-lock.json',
-        updatedPackageLockJson,
-      );
-      if (updatedBunLock) {
-        this.appState.editorMosaic.replaceContents('bun.lock', updatedBunLock);
-      }
-      if (updatedYarnLock) {
-        this.appState.editorMosaic.replaceContents(
-          'yarn.lock',
-          updatedYarnLock,
-        );
-      }
+      this.updatePackageJsonAndLockfiles(updates);
 
       return true;
     } catch (error: any) {

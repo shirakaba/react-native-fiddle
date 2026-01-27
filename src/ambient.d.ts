@@ -106,6 +106,15 @@ declare global {
         type: 'npm-add-modules-status',
         listener: (value: boolean) => void,
       ): void;
+      addEventListener(
+        type: 'npm-package-json-and-lockfiles-updated',
+        listener: (value: {
+          updatedPackageJson: string;
+          updatedPackageLockJson: string;
+          updatedBunLock?: string;
+          updatedYarnLock?: string;
+        }) => void,
+      ): void;
       addModules(
         { dir, packageManager }: PMOperationOptions,
         ...names: Array<string>

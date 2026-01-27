@@ -33,6 +33,8 @@ const channelMapping: Record<FiddleEvent, IpcEvents> = {
   'new-fiddle': IpcEvents.FS_NEW_FIDDLE,
   'new-test': IpcEvents.FS_NEW_TEST,
   'npm-add-modules-status': IpcEvents.NPM_ADD_MODULES_STATUS,
+  'npm-package-json-and-lockfiles-updated':
+    IpcEvents.NPM_PACKAGE_JSON_AND_LOCKFILES_UPDATED,
   'open-fiddle': IpcEvents.FS_OPEN_FIDDLE,
   'open-settings': IpcEvents.OPEN_SETTINGS,
   'open-template': IpcEvents.FS_OPEN_TEMPLATE,
