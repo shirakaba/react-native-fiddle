@@ -14,8 +14,9 @@ import {
 import { Editor } from './editor';
 import { RenderNonIdealState } from './editors-non-ideal-state';
 import { MaximizeButton, RemoveButton } from './editors-toolbar-button';
-import { EditorId, SetFiddleOptions } from '../../interfaces';
+import { EditorId, PACKAGE_NAME, SetFiddleOptions } from '../../interfaces';
 import { AppState } from '../state';
+import { parseDeps } from '../utils/deps';
 import { getEditorTitle } from '../utils/editor-utils';
 import { getAtPath, setAtPath } from '../utils/js-path';
 import { toggleMonaco } from '../utils/toggle-monaco';
@@ -65,12 +66,22 @@ export const Editors = observer(
       );
 
       window.ElectronFiddle.addEventListener('new-fiddle', async () => {
-        const { modules, version } = this.props.appState;
+        const { version } = this.props.appState;
         const values = await window.ElectronFiddle.getTemplate(version);
         const options: SetFiddleOptions = { templateName: version };
 
-        // Clear previously installed modules.
-        modules.clear();
+        // Replace previously installed modules.
+        let deps: Record<string, string>;
+        try {
+          deps = await parseDeps(JSON.parse(values[PACKAGE_NAME] ?? '{}'));
+        } catch (error) {
+          deps = {};
+          await window.app.state.showErrorDialog(
+            'Could not open Fiddle - invalid JSON found in package.json',
+          );
+        }
+
+        window.app.state.modules = new Map(Object.entries(deps));
 
         await window.app.replaceFiddle(values, options);
       });
