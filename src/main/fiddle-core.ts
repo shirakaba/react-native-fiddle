@@ -32,10 +32,12 @@ import {
   addModulesWithFeedback,
   getPreferredPackageManager,
   readPackageJsonAndLockfiles,
+  syncModules,
 } from './npm';
 import { normaliseMaybeDevtronValue } from './utils/devtron';
 import {
   DownloadVersionParams,
+  PACKAGE_NAME,
   ProgressObject,
   StartFiddleParams,
 } from '../interfaces';
@@ -172,13 +174,19 @@ export async function startFiddle(
       // However, as that only handles one case where modules need to be
       // installed, we've since moved it into startFiddle(). The downside is
       // that we no longer track appState.isInstallingModules.
+
+      await syncModules(
+        path.resolve(templateDirLackingNodeModules, PACKAGE_NAME),
+        modules,
+      );
+
       await installNodeModulesForTemplate({
         templateDirContainingRealNodeModules,
         templateDirLackingNodeModules,
         signal: childProcesses.abortController.signal,
         pushOutput,
         webContents,
-        modules,
+        // modules,
       });
 
       // We also launch the RNCLI dev server during this hook, as launching it
@@ -489,6 +497,8 @@ function restartRNCLI({
       );
     }
 
+    await syncModules(path.resolve(dirname, PACKAGE_NAME), modules);
+
     /**
      * We have a node_modules folder in our original template, but manually
      * saved templates omit it for some reason, so we'll copy them over.
@@ -499,7 +509,7 @@ function restartRNCLI({
       templateDirLackingNodeModules: dirname,
       pushOutput,
       webContents,
-      modules,
+      // modules,
     });
 
     restartRNCLI({

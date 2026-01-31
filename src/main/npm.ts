@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { IpcMainInvokeEvent, WebContents, shell } from 'electron';
@@ -132,6 +132,45 @@ function addModulesPrelude(packageManager: string, ...names: Array<string>) {
   }
 
   return { command, args };
+}
+
+/**
+ * Given a record of modules, rewrites the package.json to use those as its
+ * dependencies, discarding devDependencies, etc. Assumes that react-native,
+ * react-native-macos, and react-native-windows are included in the passed
+ * modules.
+ */
+export async function syncModules(
+  packageJsonPath: string,
+  modules: Record<string, string>,
+) {
+  const packageJsonContents = await readFile(packageJsonPath, 'utf-8');
+  let packageJsonParsed: any;
+  try {
+    packageJsonParsed = JSON.parse(packageJsonContents);
+  } catch (cause) {
+    throw new Error(
+      `Failed to parse the package.json at "${packageJsonPath}"`,
+      { cause },
+    );
+  }
+
+  delete packageJsonParsed.devDependencies;
+  delete packageJsonParsed.optionalDependencies;
+  delete packageJsonParsed.peerDependencies;
+  packageJsonParsed.dependencies = modules;
+
+  try {
+    await writeFile(
+      packageJsonPath,
+      JSON.stringify(packageJsonParsed, null, 2),
+    );
+  } catch (cause) {
+    throw new Error(
+      `Failed to write the updated package.json at "${packageJsonPath}"`,
+      { cause },
+    );
+  }
 }
 
 /**
