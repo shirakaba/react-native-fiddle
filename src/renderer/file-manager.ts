@@ -1,8 +1,7 @@
-import semver from 'semver';
-
 import { AppState } from './state';
 import { dotfilesTransform } from './transforms/dotfiles';
 import { forgeTransform } from './transforms/forge';
+import { parseDeps } from './utils/deps';
 import { isKnownFile } from './utils/editor-utils';
 import { DEFAULT_OPTIONS } from './utils/get-package';
 import {
@@ -11,7 +10,6 @@ import {
   FileTransform,
   FileTransformOperation,
   Files,
-  GenericDialogType,
   PACKAGE_NAME,
   PackageJsonOptions,
 } from '../interfaces';
@@ -68,43 +66,14 @@ export class FileManager {
     const editorValues: EditorValues = {};
     for (const [name, value] of Object.entries(files)) {
       if (name === PACKAGE_NAME) {
-        const { remoteLoader } = window.app;
-
-        const deps: Record<string, string> = {};
+        let deps: Record<string, string>;
         try {
-          const { dependencies, devDependencies } = JSON.parse(value);
-          Object.assign(deps, dependencies, devDependencies);
-        } catch {
+          deps = await parseDeps(JSON.parse(value));
+        } catch (error) {
+          deps = {};
           await this.appState.showErrorDialog(
             'Could not open Fiddle - invalid JSON found in package.json',
           );
-        }
-
-        // If the project specifies an Electron version, we want to tell Fiddle to run
-        // it with that version by default.
-        const electronDeps = Object.keys(deps).filter((d) =>
-          ['electron-nightly', 'electron'].includes(d),
-        );
-        for (const dep of electronDeps) {
-          // Strip off semver range prefixes, e.g:
-          // ^1.2.0 -> 1.2.0
-          // ~2.3.4 -> 2.3.4
-          const index = deps[dep].search(/\d/);
-          const version = deps[dep].substring(index);
-
-          if (!semver.valid(version)) {
-            await this.appState.showGenericDialog({
-              label: `The Electron version (${version}) in this Fiddle's package.json is invalid. Falling back to last used version.`,
-              ok: 'Close',
-              type: GenericDialogType.warning,
-              wantsInput: false,
-            });
-          } else {
-            remoteLoader.setElectronVersion(version);
-          }
-
-          // We want to include all dependencies except Electron.
-          delete deps[dep];
         }
 
         this.appState.modules = new Map(Object.entries(deps));

@@ -10,6 +10,7 @@ import {
 import { Bisector } from './bisect';
 import { EditorMosaic } from './editor-mosaic';
 import { ELECTRON_MIRROR } from './mirror-constants';
+import { parseDeps } from './utils/deps';
 import { normalizeVersion } from './utils/normalize-version';
 import { sortVersions } from './utils/sort-versions';
 import stripAnsi from './utils/strip-ansi';
@@ -37,6 +38,7 @@ import {
   InstallState,
   OutputEntry,
   OutputOptions,
+  PACKAGE_NAME,
   ProgressObject,
   RunnableVersion,
   SetFiddleOptions,
@@ -957,6 +959,18 @@ export class AppState {
       const values = await window.ElectronFiddle.getTemplate(version);
       // test again just in case something happened while we awaited
       if (shouldReplace()) {
+        let deps: Record<string, string>;
+        try {
+          deps = await parseDeps(JSON.parse(values[PACKAGE_NAME] ?? '{}'));
+        } catch (error) {
+          deps = {};
+          await window.app.state.showErrorDialog(
+            'Could not open Fiddle - invalid JSON found in package.json',
+          );
+        }
+
+        window.app.state.modules = new Map(Object.entries(deps));
+
         await window.app.replaceFiddle(values, options);
       }
     }
