@@ -2,7 +2,7 @@ import semver from 'semver';
 
 import { ELECTRON_ORG, ELECTRON_REPO } from './constants';
 import { AppState } from './state';
-import { disableDownload } from './utils/disable-download';
+import { parseDeps } from './utils/deps';
 import { isKnownFile, isSupportedFile } from './utils/editor-utils';
 import { getOctokit } from './utils/octokit';
 import { getReleaseChannel } from './versions';
@@ -10,7 +10,6 @@ import {
   EditorId,
   EditorValues,
   ElectronReleaseChannel,
-  GenericDialogType,
   InstallState,
   PACKAGE_NAME,
   VersionSource,
@@ -130,51 +129,14 @@ export class RemoteLoader {
           : data.content!;
 
         if (id === PACKAGE_NAME) {
-          const deps: Record<string, string> = {};
+          let deps: Record<string, string>;
           try {
-            const { dependencies, devDependencies } = JSON.parse(content);
-            Object.assign(deps, dependencies, devDependencies);
-          } catch (e) {
-            throw new Error('Invalid JSON found in package.json');
-          }
-
-          // If the gist specifies an Electron version, we want to tell Fiddle to run
-          // it with that version by default.
-          const electronDeps = Object.keys(deps).filter((d) =>
-            ['electron-nightly', 'electron'].includes(d),
-          );
-          for (const dep of electronDeps) {
-            // Strip off semver range prefixes, e.g:
-            // ^1.2.0 -> 1.2.0
-            // ~2.3.4 -> 2.3.4
-            const index = deps[dep].search(/\d/);
-            const version = deps[dep].substring(index);
-
-            if (
-              !semver.valid(version) ||
-              !(await window.ElectronFiddle.isReleasedMajor(
-                semver.major(version),
-              ))
-            ) {
-              await this.appState.showGenericDialog({
-                label: `The Electron version (${version}) in this gist's package.json is invalid. Falling back to last used version.`,
-                ok: 'Close',
-                type: GenericDialogType.warning,
-                wantsInput: false,
-              });
-            } else if (disableDownload(version)) {
-              await this.appState.showGenericDialog({
-                label: `This gist's Electron version (${version}) is not available on your current OS. Falling back to last used version.`,
-                ok: 'Close',
-                type: GenericDialogType.warning,
-                wantsInput: false,
-              });
-            } else {
-              this.setElectronVersion(version);
-            }
-
-            // We want to include all dependencies except Electron.
-            delete deps[dep];
+            deps = await parseDeps(JSON.parse(values[PACKAGE_NAME] ?? '{}'));
+          } catch (error) {
+            deps = {};
+            await window.app.state.showErrorDialog(
+              'Could not open Fiddle - invalid JSON found in package.json',
+            );
           }
 
           this.appState.modules = new Map(Object.entries(deps));

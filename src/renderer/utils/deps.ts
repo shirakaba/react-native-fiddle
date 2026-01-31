@@ -1,5 +1,6 @@
 import semver from 'semver';
 
+import { disableDownload } from './disable-download';
 import { GenericDialogType } from '../../interfaces';
 
 export async function parseDeps(parsedJson: any) {
@@ -21,9 +22,19 @@ export async function parseDeps(parsedJson: any) {
     const index = deps[dep].search(/\d/);
     const version = deps[dep].substring(index);
 
-    if (!semver.valid(version)) {
+    if (
+      !semver.valid(version) ||
+      !(await window.ElectronFiddle.isReleasedMajor(semver.major(version)))
+    ) {
       await window.app.state.showGenericDialog({
         label: `The Electron version (${version}) in this Fiddle's package.json is invalid. Falling back to last used version.`,
+        ok: 'Close',
+        type: GenericDialogType.warning,
+        wantsInput: false,
+      });
+    } else if (disableDownload(version)) {
+      await window.app.state.showGenericDialog({
+        label: `This gist's Electron version (${version}) is not available on your current OS. Falling back to last used version.`,
         ok: 'Close',
         type: GenericDialogType.warning,
         wantsInput: false,
